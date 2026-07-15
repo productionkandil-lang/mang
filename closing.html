@@ -481,7 +481,8 @@ document.getElementById('printBtn').onclick = ()=>{
   if(!selectedCodes.size){ alert('حدد موظف واحد أو اتنين على الأكثر للطباعة'); return; }
   if(selectedCodes.size > 2){ alert('تقدر تطبع موظفين بحد أقصى في نفس الصفحة'); return; }
   const rows = reportRows.filter(r=>selectedCodes.has(r.code));
-  printPayslips(rows);
+  const periodLabel = prompt('اسم/شهر التقرير ده (هيظهر على الكشف):', '') || '';
+  printPayslips(rows, periodLabel);
 };
 
 document.getElementById('closeMonthBtn').onclick = async ()=>{
@@ -518,24 +519,45 @@ document.getElementById('closeMonthBtn').onclick = async ()=>{
 };
 
 // ---------- print ----------
-function printPayslips(rows){
+function printPayslips(rows, periodLabel){
   const win = window.open('', '_blank');
-  const cardHtml = rows.map(r => payslipCardHtml(r)).join('');
+  const cardHtml = rows.map(r => payslipCardHtml(r, periodLabel)).join('');
   const cols = rows.length === 2 ? '1fr 1fr' : '1fr';
   win.document.write(`
     <html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير راتب</title>
     <style>
       body{ font-family: Tajawal, Arial, sans-serif; margin:0; padding:24px; color:#1a1a1a; }
       .wrap{ display:grid; grid-template-columns:${cols}; gap:20px; }
-      .card{ border:1.5px solid #333; border-radius:10px; padding:18px; }
-      .card h2{ font-size:16px; margin:0 0 2px; }
-      .card .sub{ font-size:11px; color:#555; margin-bottom:14px; }
-      table{ width:100%; border-collapse:collapse; font-size:12px; }
-      td{ padding:5px 4px; border-bottom:1px solid #ddd; }
-      td.label{ color:#555; }
-      td.val{ text-align:left; font-family:'Courier New',monospace; font-weight:600; }
-      tr.net td{ font-weight:800; font-size:14px; border-top:2px solid #333; border-bottom:none; padding-top:8px; }
-      .sig{ margin-top:24px; display:flex; justify-content:space-between; font-size:11px; color:#555; }
+      .card{ border:2px solid #2f6fb0; border-radius:4px; overflow:hidden; }
+      .letterhead{
+        display:flex; justify-content:space-between; align-items:center;
+        padding:10px 16px; border-bottom:2px solid #2f6fb0;
+      }
+      .letterhead .company{ font-size:15px; font-weight:800; }
+      .letterhead .dept{ font-size:12px; color:#2f6fb0; font-weight:700; }
+      .title{
+        text-align:center; font-weight:800; font-size:13px; padding:8px;
+        border-bottom:2px solid #2f6fb0;
+      }
+      .meta{ width:100%; border-collapse:collapse; }
+      .meta td{ padding:7px 12px; font-size:12.5px; border-bottom:1px solid #2f6fb0; }
+      .meta td.mlabel{ font-weight:700; width:35%; border-inline-end:1px solid #2f6fb0; }
+      .ledger{ width:100%; border-collapse:collapse; }
+      .ledger th, .ledger td{ padding:7px 8px; font-size:12px; text-align:center; border:1px solid #2f6fb0; }
+      .ledger th.credit-h{ background:#c8e6c9; font-weight:800; font-size:13px; }
+      .ledger th.debit-h{ background:#f4b8b0; font-weight:800; font-size:13px; }
+      .ledger th.sub{ background:#eef3f8; font-weight:700; font-size:11.5px; }
+      .ledger td.item-label{ text-align:center; }
+      .ledger td.item-val{ font-family:'Courier New',monospace; font-weight:700; }
+      .ledger tr.total td{ font-weight:800; }
+      .ledger tr.total td.credit-total{ background:#dcefdc; }
+      .ledger tr.total td.debit-total{ background:#fbdedb; }
+      .net{
+        display:flex; justify-content:space-between; align-items:center;
+        padding:12px 16px; font-size:15px; font-weight:800; background:#f4f6f8;
+      }
+      .net .amount{ font-family:'Courier New',monospace; text-decoration:underline; }
+      .sig{ margin:14px 16px 18px; display:flex; justify-content:space-between; font-size:11px; color:#555; }
       .sig div{ border-top:1px solid #999; padding-top:6px; width:40%; text-align:center; }
       @media print{ body{ padding:10px; } }
     </style></head>
@@ -547,25 +569,62 @@ function printPayslips(rows){
   win.document.close();
 }
 
-function payslipCardHtml(r){
-  const row = (label, val, isNet) => `<tr class="${isNet?'net':''}"><td class="label">${label}</td><td class="val">${fmt(val)}</td></tr>`;
+function payslipCardHtml(r, periodLabel){
+  const totalOtHours = (r.ot1Hours||0) + (r.ot15Hours||0) + (r.fridayOtHours||0);
+  const credits = [
+    { label:'عدد ايام الاضافي', val:'—' },
+    { label:'قيمة الاضافي', val:'—' },
+    { label:'عدد ساعات الاضافي', val: Math.round(totalOtHours*10)/10 },
+    { label:'قيمة الساعات الاضافية', val: r.otAmount },
+    { label:'بدل مواصلات', val: r.transportAllowance },
+    { label:'بدلات اخرى', val: r.otherAllowances }
+  ];
+  const debits = [
+    { label:'السلف', val: r.advanceDue },
+    { label:'خصم دفعات', val: 0 },
+    { label:'عدد ايام الغياب', val: r.daysAbsent },
+    { label:'قيمة الغياب', val: r.absentAmount },
+    { label:'ساعات الخصم', val: 0 },
+    { label:'قيمة الساعات المخصومة', val: r.lateAmount }
+  ];
+  const creditTotal = r.otAmount + r.transportAllowance + r.otherAllowances;
+  const debitTotal = r.advanceDue + r.absentAmount + r.lateAmount + r.deductionDue;
+  const rowCount = Math.max(credits.length, debits.length);
+  let bodyRows = '';
+  for(let i=0;i<rowCount;i++){
+    const c = credits[i] || { label:'', val:'' };
+    const d = debits[i] || { label:'', val:'' };
+    const cDisplay = (c.val==='' || c.val==='—') ? (c.val||'') : fmt(c.val);
+    const dDisplay = (d.val==='' || d.val==='—') ? (d.val||'') : fmt(d.val);
+    bodyRows += `<tr>
+      <td class="item-label">${c.label}</td><td class="item-val">${cDisplay}</td>
+      <td class="item-label">${d.label}</td><td class="item-val">${dDisplay}</td>
+    </tr>`;
+  }
   return `
     <div class="card">
-      <h2>${r.name}</h2>
-      <div class="sub">كود: ${r.code} — النظام: ${r.systemName}</div>
-      <table>
-        ${row('المرتب الأساسي', r.baseSalary)}
-        ${row('أيام الحضور', r.daysPresent)}
-        ${row('أيام الغياب', r.daysAbsent)}
-        ${row('قيمة الأوفرتايم', r.otAmount)}
-        ${row('بدل المواصلات', r.transportAllowance)}
-        ${row('بدلات أخرى', r.otherAllowances)}
-        ${row('خصم التأخير', -r.lateAmount)}
-        ${row('خصم الغياب', -r.absentAmount)}
-        ${row('سلفة مستحقة', -r.advanceDue)}
-        ${row('خصم يدوي', -r.deductionDue)}
-        ${row('الصافي', r.netSalary, true)}
+      <div class="letterhead">
+        <div class="company">GM Marine</div>
+        <div class="dept">قسم الحسابات</div>
+      </div>
+      <div class="title">كشف رواتب تفصيلي ${periodLabel ? 'عن ' + periodLabel : ''}</div>
+      <table class="meta">
+        <tr><td class="mlabel">الموظف:</td><td>${r.name}</td></tr>
+        <tr><td class="mlabel">اساسي الراتب:</td><td>${fmt(r.baseSalary)}</td></tr>
       </table>
+      <table class="ledger">
+        <tr><th class="credit-h" colspan="2">المستحقات</th><th class="debit-h" colspan="2">الاستقطاعات</th></tr>
+        <tr><th class="sub">بند</th><th class="sub">دائن</th><th class="sub">بند</th><th class="sub">مدين</th></tr>
+        ${bodyRows}
+        <tr class="total">
+          <td class="credit-total">إجمالي المستحقات</td><td class="credit-total">${fmt(creditTotal)}</td>
+          <td class="debit-total">إجمالي الاستقطاعات</td><td class="debit-total">${fmt(debitTotal)}</td>
+        </tr>
+      </table>
+      <div class="net">
+        <span>صافي الراتب المستحق</span>
+        <span class="amount">${fmt(r.netSalary)} ${r.netSalary>=0?'دائن':'مدين'}</span>
+      </div>
       <div class="sig">
         <div>توقيع الموظف</div>
         <div>توقيع الإدارة</div>

@@ -374,7 +374,8 @@ function buildReportRows(){
 
     const empAdvances = advances.filter(a=>a.employeeCode===res.code && a.remaining>0);
     const advanceDue = empAdvances.filter(a=>a.type==='advance').reduce((s,a)=> s + Math.min(a.totalAmount/a.installments, a.remaining), 0);
-    const deductionDue = empAdvances.filter(a=>a.type==='deduction').reduce((s,a)=> s + Math.min(a.totalAmount/a.installments, a.remaining), 0);
+    const deductionDueRaw = empAdvances.filter(a=>a.type==='deduction').reduce((s,a)=> s + Math.min(a.totalAmount/a.installments, a.remaining), 0);
+    const deductionDue = Math.round(deductionDueRaw / 5) * 5;
 
     const netSalary = baseSalary + otAmount + transportAllowance + otherAllowances - lateAmount - absentAmount - advanceDue - deductionDue;
 

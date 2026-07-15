@@ -165,13 +165,13 @@ Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
 const SETTINGS_KEY = 'gm_att_van_settings';
 const LOG_KEY = 'gm_att_van_log';
 
-function loadSettings(){ return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{"dailyRate":0}'); }
-function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
-function loadLog(){ return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); }
-function saveLog(l){ localStorage.setItem(LOG_KEY, JSON.stringify(l)); }
+async function loadSettings(){ return await DB.dbGetJSON(SETTINGS_KEY, {"dailyRate":0}); }
+async function saveSettings(s){ await DB.dbSetJSON(SETTINGS_KEY, s); }
+async function loadLog(){ return await DB.dbGetJSON(LOG_KEY, []); }
+async function saveLog(l){ await DB.dbSetJSON(LOG_KEY, l); }
 
-let settings = loadSettings();
-let log = loadLog();
+let settings = await loadSettings();
+let log = await loadLog();
 let sortField = 'date';
 let sortDir = 'desc';
 

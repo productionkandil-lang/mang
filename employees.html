@@ -169,7 +169,7 @@ Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
 
 const EMP_PUBLIC_KEY = 'gm_att_employees_public';
 const EMP_MONEY_KEY  = 'gm_att_employees_money';
-const SYS_KEY        = 'gm_att_systems'; /* لسه على localStorage لحد ما نهاجر صفحة أنظمة العمل */
+const SYS_KEY        = 'gm_att_systems';
 
 function canWriteMoney(){ return Auth.getSession().role === 'admin'; }
 
@@ -189,11 +189,11 @@ async function loadEmployees(){
 async function saveEmployees(list){ await DB.dbSetJSON(EMP_PUBLIC_KEY, list); }
 async function loadMoney(){ return await DB.dbGetJSON(EMP_MONEY_KEY, {}); }
 async function saveMoney(map){ if(canWriteMoney()) await DB.dbSetJSON(EMP_MONEY_KEY, map); }
-function loadSystems(){ return JSON.parse(localStorage.getItem(SYS_KEY) || '[]'); }
+async function loadSystems(){ return await DB.dbGetJSON(SYS_KEY, []); }
 
 let employees = await loadEmployees();
 let moneyMap = await loadMoney();
-let systems = loadSystems();
+let systems = await loadSystems();
 let filter = '';
 let sortField = null;
 let sortDir = 'asc';
@@ -239,7 +239,6 @@ function renderStats(){
 function renderTable(){
   const body = document.getElementById('empBody');
   const empty = document.getElementById('emptyState');
-  systems = loadSystems();
 
   const filtered = employees.filter(e =>
     !filter || e.name.includes(filter) || (e.code||'').includes(filter)

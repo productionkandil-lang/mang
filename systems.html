@@ -207,13 +207,13 @@ function defaultSystem(id, name){
   };
 }
 
-function loadSystems(){
-  let s = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+async function loadSystems(){
+  let s = await DB.dbGetJSON(STORAGE_KEY, null);
   if(!s || !s.length){
     s = [ defaultSystem(1,'نظام 1'), defaultSystem(2,'نظام 2'), defaultSystem(3,'نظام 3') ];
     s[0].grace.isMaster = true;
     s[2].fridayRule.enabled = false;
-    saveSystems(s);
+    await saveSystems(s);
   }
   // migrate old records missing newer fields
   let migrated = false;
@@ -242,12 +242,12 @@ function loadSystems(){
       migrated = true;
     }
   });
-  if(migrated) saveSystems(s);
+  if(migrated) await saveSystems(s);
   return s;
 }
-function saveSystems(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+async function saveSystems(s){ await DB.dbSetJSON(STORAGE_KEY, s); }
 
-let systems = loadSystems();
+let systems = await loadSystems();
 let activeId = systems[0]?.id;
 
 const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];

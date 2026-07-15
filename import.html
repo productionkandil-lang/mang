@@ -97,7 +97,7 @@
     <div class="hint">
       اختار الملف اللي كنت نزّلته زمان بزرار "تنزيل نسخة احتياطية" القديم.<br>
       <b>بيانات الموظفين والمرتبات</b> هترفع مباشرة لـ Firebase (سحابة مشتركة بين كل الأجهزة).<br>
-      <b>باقي البيانات</b> (أنظمة العمل، الحضور، السلف، الإجازات...) هترجع لمتصفح الجهاز ده بس لحد ما نهاجرها هي كمان — يعني لو بتفتح من جهاز تاني، كررها هناك كمان بنفس الطريقة.
+      <b>باقي البيانات</b> (أنظمة العمل، الحضور، السلف، الإجازات...) هترفع على Firebase كمان — مرة واحدة بس كفاية من أي جهاز، وهتظهر لكل الناس من أي مكان.
     </div>
     <div class="drop" id="dropZone">📄 دوس هنا لاختيار ملف النسخة الاحتياطية (.json)</div>
     <input type="file" id="fileInput" accept=".json">
@@ -176,15 +176,15 @@ document.getElementById('importBtn').onclick = async ()=>{
         await DB.dbSetJSON('gm_att_employees_money', moneyMap);
         logLine('✔ الموظفين (' + value.length + ') والمرتبات — اترفعوا على Firebase', 'ok');
       } else {
-        localStorage.setItem(key, data[key]);
-        logLine('✔ ' + key + ' — رجع لمتصفح الجهاز ده', 'warn');
+        await DB.dbSetJSON(key, value);
+        logLine('✔ ' + key + ' — اترفع على Firebase', 'ok');
       }
     }catch(err){
       logLine('✕ فشل استيراد ' + key + ': ' + err.message, 'err');
     }
   }
 
-  logLine('خلصنا. لو محتاج تشوف بيانات "أنظمة العمل / الحضور / السلف..." افتح صفحاتهم دلوقتي.', 'ok');
+  logLine('خلصنا. كل البيانات دلوقتي على Firebase ومشتركة بين كل الأجهزة.', 'ok');
   btn.textContent = 'تم الاستيراد';
   Auth.finalizeAuthUI();
 };

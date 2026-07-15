@@ -141,7 +141,8 @@
 <script>
 Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
 
-const EMP_KEY = 'gm_att_employees';
+const EMP_KEY = 'gm_att_employees_public';
+const EMP_MONEY_KEY = 'gm_att_employees_money';
 const SYS_KEY = 'gm_att_systems';
 const PROCESSED_KEY = 'gm_att_processed';
 const RAW_KEY = 'gm_att_raw';
@@ -149,10 +150,10 @@ const ADV_KEY = 'gm_att_advances';
 const ARCHIVE_KEY = 'gm_att_archive';
 const COLS_KEY = 'gm_att_report_cols';
 
-function load(key, def){ return JSON.parse(localStorage.getItem(key) || JSON.stringify(def)); }
-function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+async function load(key, def){ return await DB.dbGetJSON(key, def); }
+async function save(key, val){ await DB.dbSetJSON(key, val); }
 
-function migrateEmployees(list){
+async function migrateEmployees(list){
   let migrated = false;
   list.forEach(e=>{
     if(!e.employmentPeriods){
@@ -160,11 +161,17 @@ function migrateEmployees(list){
       migrated = true;
     }
   });
-  if(migrated) localStorage.setItem(EMP_KEY, JSON.stringify(list));
+  if(migrated) await DB.dbSetJSON(EMP_KEY, list);
   return list;
 }
-const employees = migrateEmployees(load(EMP_KEY, []));
-function migrateSystems(s){
+const employees = await migrateEmployees(await load(EMP_KEY, []));
+const moneyMap = await load(EMP_MONEY_KEY, {});
+employees.forEach(e=>{
+  const m = moneyMap[e.id] || {};
+  e.baseSalary = m.baseSalary || 0;
+  e.dailyTransportAllowance = m.dailyTransportAllowance || 0;
+});
+async function migrateSystems(s){
   let migrated = false;
   s.forEach(sys=>{
     if(!sys.weeklyOffDays){ sys.weeklyOffDays = sys.weeklyOffDay!=null ? [sys.weeklyOffDay] : [5]; migrated = true; }
@@ -183,14 +190,14 @@ function migrateSystems(s){
       migrated = true;
     }
   });
-  if(migrated) localStorage.setItem(SYS_KEY, JSON.stringify(s));
+  if(migrated) await DB.dbSetJSON(SYS_KEY, s);
   return s;
 }
-const systems = migrateSystems(load(SYS_KEY, []));
-const processed = load(PROCESSED_KEY, null);
-const rawRows = load(RAW_KEY, []).map(r=>({...r, date:new Date(r.date)}));
-const advances = load(ADV_KEY, []);
-const vanLog = load('gm_att_van_log', []);
+const systems = await migrateSystems(await load(SYS_KEY, []));
+const processed = await load(PROCESSED_KEY, null);
+const rawRows = (await load(RAW_KEY, [])).map(r=>({...r, date:new Date(r.date)}));
+const advances = await load(ADV_KEY, []);
+const vanLog = await load('gm_att_van_log', []);
 
 function toast(msg){
   const t = document.getElementById('toast');
@@ -221,15 +228,15 @@ const COLUMN_DEFS = [
   { key:'netSalary', label:'الصافي', always:true },
 ];
 
-function loadColumnPrefs(){
-  const saved = load(COLS_KEY, null);
+async function loadColumnPrefs(){
+  const saved = await load(COLS_KEY, null);
   if(saved) return saved;
   const def = {};
   COLUMN_DEFS.forEach(c=> def[c.key] = c.always || c.default);
-  save(COLS_KEY, def);
+  await save(COLS_KEY, def);
   return def;
 }
-let colPrefs = loadColumnPrefs();
+let colPrefs = await loadColumnPrefs();
 
 function getSystem(id){ return systems.find(s=>s.id===id); }
 function getEmp(code){ return employees.find(e=>e.code===code); }
@@ -477,13 +484,13 @@ document.getElementById('printBtn').onclick = ()=>{
   printPayslips(rows);
 };
 
-document.getElementById('closeMonthBtn').onclick = ()=>{
+document.getElementById('closeMonthBtn').onclick = async ()=>{
   if(!reportRows.length){ alert('مفيش بيانات لتقفيلها'); return; }
   const label = prompt('اسم/شهر التقرير ده (مثلاً: يوليو 2026):', '');
   if(!label) return;
   if(!confirm(`هيتم أرشفة تقرير "${label}" ومسح بيانات الحضور الحالية عشان تبدأ الشهر الجديد. متأكد؟`)) return;
 
-  const archive = load(ARCHIVE_KEY, []);
+  const archive = await load(ARCHIVE_KEY, []);
   archive.push({
     id: 'arch_'+Date.now().toString(36),
     label, closedAt: Date.now(),
@@ -491,20 +498,20 @@ document.getElementById('closeMonthBtn').onclick = ()=>{
     rows: reportRows,
     vanTotal, vanEntries: vanEntriesThisPeriod
   });
-  save(ARCHIVE_KEY, archive);
+  await save(ARCHIVE_KEY, archive);
 
   // deduct advances/deductions applied this month
-  const advList = load(ADV_KEY, []);
+  const advList = await load(ADV_KEY, []);
   advList.forEach(a=>{
     const applied = reportRows.find(r=>r.code===a.employeeCode);
     if(!applied || a.remaining<=0) return;
     const due = Math.min(a.totalAmount/a.installments, a.remaining);
     a.remaining = Math.max(0, a.remaining - due);
   });
-  save(ADV_KEY, advList);
+  await save(ADV_KEY, advList);
 
-  localStorage.removeItem(RAW_KEY);
-  localStorage.removeItem(PROCESSED_KEY);
+  await DB.dbDeleteKey(RAW_KEY);
+  await DB.dbDeleteKey(PROCESSED_KEY);
 
   toast('تم تقفيل الشهر وأرشفته بنجاح');
   setTimeout(()=> location.href = 'history.html', 1200);

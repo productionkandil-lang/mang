@@ -192,34 +192,35 @@
 <script>
 Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
 
-const EMP_KEY = 'gm_att_employees';
+const EMP_KEY = 'gm_att_employees_public';
 const SYS_KEY = 'gm_att_systems';
 const RAW_KEY = 'gm_att_raw';
 const HOL_KEY = 'gm_att_holidays';
 const PROCESSED_KEY = 'gm_att_processed';
 
-function loadEmployees(){
-  const list = JSON.parse(localStorage.getItem(EMP_KEY) || '[]');
+async function loadEmployees(){
+  const list = await DB.dbGetJSON(EMP_KEY, []);
   let migrated = false;
   list.forEach(e=>{
     if(!e.employmentPeriods){
       e.employmentPeriods = (e.startDate || e.endDate) ? [{ startDate: e.startDate||null, endDate: e.endDate||null }] : [];
       migrated = true;
     }
+    if(!e.systemAssignments){ e.systemAssignments = []; migrated = true; }
   });
-  if(migrated) localStorage.setItem(EMP_KEY, JSON.stringify(list));
+  if(migrated) await DB.dbSetJSON(EMP_KEY, list);
   return list;
 }
 function isDateInEmployment(emp, dk){
   if(!emp.employmentPeriods || !emp.employmentPeriods.length) return true; // no periods set = always employed
   return emp.employmentPeriods.some(p => (!p.startDate || dk>=p.startDate) && (!p.endDate || dk<=p.endDate));
 }
-function saveEmployees(e){ localStorage.setItem(EMP_KEY, JSON.stringify(e)); }
-function loadSystems(){
-  const s = JSON.parse(localStorage.getItem(SYS_KEY) || '[]');
-  return migrateSystems(s);
+async function saveEmployees(e){ await DB.dbSetJSON(EMP_KEY, e); }
+async function loadSystems(){
+  const s = await DB.dbGetJSON(SYS_KEY, []);
+  return await migrateSystems(s);
 }
-function migrateSystems(s){
+async function migrateSystems(s){
   let migrated = false;
   s.forEach(sys=>{
     if(!sys.weeklyOffDays){ sys.weeklyOffDays = sys.weeklyOffDay!=null ? [sys.weeklyOffDay] : [5]; migrated = true; }
@@ -236,15 +237,15 @@ function migrateSystems(s){
       migrated = true;
     }
   });
-  if(migrated) localStorage.setItem(SYS_KEY, JSON.stringify(s));
+  if(migrated) await DB.dbSetJSON(SYS_KEY, s);
   return s;
 }
 
-let employees = loadEmployees();
-let systems = loadSystems();
+let employees = await loadEmployees();
+let systems = await loadSystems();
 let rawRows = [];
-let holidays = JSON.parse(localStorage.getItem(HOL_KEY) || '[]');
-let scheduleOverrides = JSON.parse(localStorage.getItem('gm_att_schedule_overrides') || '[]');
+let holidays = await DB.dbGetJSON(HOL_KEY, []);
+let scheduleOverrides = await DB.dbGetJSON('gm_att_schedule_overrides', []);
 
 function isHoliday(dk){
   return holidays.some(h => dk >= h.startDate && dk <= h.endDate);
@@ -317,17 +318,17 @@ fileInput.onchange = e=>{ if(e.target.files.length) handleFile(e.target.files[0]
 
 function handleFile(file){
   const reader = new FileReader();
-  reader.onload = ev=>{
+  reader.onload = async ev=>{
     const data = new Uint8Array(ev.target.result);
     const wb = XLSX.read(data, { type:'array', cellDates:true });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { header:1, raw:true });
-    parseRows(rows);
+    await parseRows(rows);
   };
   reader.readAsArrayBuffer(file);
 }
 
-function parseRows(rows){
+async function parseRows(rows){
   // find header row (contains 'AC-No' or similar)
   let headerIdx = rows.findIndex(r => r.some(c => String(c).toLowerCase().includes('ac-no') || String(c).toLowerCase().includes('name')));
   if(headerIdx === -1) headerIdx = 0;
@@ -369,22 +370,22 @@ function parseRows(rows){
     return;
   }
 
-  const existing = loadExistingRaw();
+  const existing = await loadExistingRaw();
   const merge = mergeRows(existing, newRows);
   rawRows = merge.all;
   window._mergeStats = merge.stats;
 
-  localStorage.setItem(RAW_KEY, JSON.stringify(rawRows));
-  localStorage.removeItem(PROCESSED_KEY); // data changed, force recalculation
-  syncEmployees();
+  await DB.dbSetJSON(RAW_KEY, rawRows);
+  await DB.dbDeleteKey(PROCESSED_KEY); // data changed, force recalculation
+  await syncEmployees();
   renderFileSummary();
   document.getElementById('dropSection').classList.add('collapsed');
   document.getElementById('resultSection').classList.remove('hidden');
   document.getElementById('processedSection').classList.add('hidden');
 }
 
-function loadExistingRaw(){
-  const saved = JSON.parse(localStorage.getItem(RAW_KEY) || '[]');
+async function loadExistingRaw(){
+  const saved = await DB.dbGetJSON(RAW_KEY, []);
   return saved.map(r => ({...r, date: new Date(r.date)}));
 }
 
@@ -400,7 +401,7 @@ function mergeRows(existing, incoming){
   return { all: [...map.values()], stats: { added, updated, incomingTotal: incoming.length } };
 }
 
-function syncEmployees(){
+async function syncEmployees(){
   const existingCodes = new Set(employees.map(e=>e.code));
   let added = 0;
   const seen = new Map();
@@ -409,12 +410,12 @@ function syncEmployees(){
     if(!existingCodes.has(code)){
       employees.push({
         id: 'e_'+code+'_'+Date.now().toString(36),
-        name, code, systemId:null, baseSalary:0, dailyTransportAllowance:0, active:true
+        name, code, systemId:null, active:true, employmentPeriods:[], systemAssignments:[]
       });
       added++;
     }
   });
-  if(added) saveEmployees(employees);
+  if(added) await saveEmployees(employees);
   window._syncedCount = added;
 }
 
@@ -447,10 +448,10 @@ function renderFileSummary(){
   document.getElementById('processBtn').disabled = false;
 }
 
-document.getElementById('resetBtn').onclick = ()=>{
+document.getElementById('resetBtn').onclick = async ()=>{
   if(!confirm('هيتم مسح كل بيانات الحضور المرفوعة نهائيًا (مش هيأثر على إعدادات الأنظمة أو الموظفين). متأكد؟')) return;
-  localStorage.removeItem(RAW_KEY);
-  localStorage.removeItem(PROCESSED_KEY);
+  await DB.dbDeleteKey(RAW_KEY);
+  await DB.dbDeleteKey(PROCESSED_KEY);
   document.getElementById('dropSection').classList.remove('collapsed');
   document.getElementById('resultSection').classList.add('hidden');
   document.getElementById('processedSection').classList.add('hidden');
@@ -573,15 +574,15 @@ function generateMissingDayRows(){
   return synthetic;
 }
 
-function processMonth(){
-  systems = loadSystems();
-  employees = loadEmployees();
+async function processMonth(){
+  systems = await loadSystems();
+  employees = await loadEmployees();
   mergeOvernightShifts();
   computeEffectiveArrivals();
   const missingDayRows = generateMissingDayRows();
   if(missingDayRows.length){
     rawRows = rawRows.concat(missingDayRows);
-    localStorage.setItem(RAW_KEY, JSON.stringify(rawRows));
+    await DB.dbSetJSON(RAW_KEY, rawRows);
   }
   window._autoFilledCount = missingDayRows.length;
   const workingRows = rawRows;
@@ -667,7 +668,7 @@ function processMonth(){
   });
 
   const resultsArr = Object.values(results);
-  localStorage.setItem(PROCESSED_KEY, JSON.stringify({ generatedAt: Date.now(), results: resultsArr }));
+  await DB.dbSetJSON(PROCESSED_KEY, { generatedAt: Date.now(), results: resultsArr });
   renderResults(resultsArr);
 }
 
@@ -714,13 +715,13 @@ function renderResults(resultsArr){
   });
 }
 
-document.getElementById('processBtn').onclick = ()=>{
-  processMonth();
+document.getElementById('processBtn').onclick = async ()=>{
+  await processMonth();
   toast('تم حساب الشهر بنجاح');
 };
 
-function tryLoadPersisted(){
-  const saved = JSON.parse(localStorage.getItem(RAW_KEY) || 'null');
+async function tryLoadPersisted(){
+  const saved = await DB.dbGetJSON(RAW_KEY, null);
   if(saved && saved.length){
     rawRows = saved.map(r=>({...r, date: new Date(r.date)}));
     window._syncedCount = 0;
@@ -728,11 +729,11 @@ function tryLoadPersisted(){
     renderFileSummary();
     document.getElementById('dropSection').classList.add('collapsed');
     document.getElementById('resultSection').classList.remove('hidden');
-    const proc = JSON.parse(localStorage.getItem(PROCESSED_KEY) || 'null');
+    const proc = await DB.dbGetJSON(PROCESSED_KEY, null);
     if(proc && proc.results){ renderResults(proc.results); }
   }
 }
-tryLoadPersisted();
+await tryLoadPersisted();
 
 Auth.finalizeAuthUI();
 

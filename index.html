@@ -103,7 +103,7 @@
 <main>
   <div class="backup-bar">
     <div class="txt">
-      <b>البيانات دلوقتي متخزنة على Firebase (سحابة جوجل)</b> — مش في المتصفح بس، فهتلاقيها من أي جهاز تدخل بيه، ومحفوظة أوتوماتيك من غير ما تعمل حاجة. صفحات "أنظمة العمل، رفع الملف، بيانات الشهر..." لسه بيتم نقلها للسحابة واحدة واحدة — لحد ما ننقلها كلها، بياناتها بتفضل محلية على كل جهاز لوحده.
+      <b>كل بيانات النظام دلوقتي متخزنة على Firebase (سحابة جوجل)</b> — مش في المتصفح بس، فهتلاقيها متطابقة من أي جهاز أو مكان تدخل بيه، ومحفوظة أوتوماتيك من غير ما تعمل حاجة.
     </div>
   </div>
 
@@ -156,10 +156,10 @@ cardsData.forEach(c=>{
 });
 
 const employees = await DB.dbGetJSON('gm_att_employees_public', []);
-const systems = JSON.parse(localStorage.getItem('gm_att_systems') || '[]'); /* لسه محلي لحد ما تتهاجر صفحة أنظمة العمل */
+const systems = await DB.dbGetJSON('gm_att_systems', []);
 document.getElementById('statsStrip').innerHTML = `
   <div class="stat"><div class="n">${employees.length}</div><div class="l">موظف مسجل</div></div>
-  <div class="stat"><div class="n">${systems.length}</div><div class="l">نظام عمل معرّف (محلي لسه)</div></div>
+  <div class="stat"><div class="n">${systems.length}</div><div class="l">نظام عمل معرّف</div></div>
 `;
 
 Auth.finalizeAuthUI();

@@ -134,9 +134,9 @@
 Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
 
 const HOL_KEY = 'gm_att_holidays';
-function loadHolidays(){ return JSON.parse(localStorage.getItem(HOL_KEY) || '[]'); }
-function saveHolidays(h){ localStorage.setItem(HOL_KEY, JSON.stringify(h)); }
-let holidays = loadHolidays();
+async function loadHolidays(){ return await DB.dbGetJSON(HOL_KEY, []); }
+async function saveHolidays(h){ await DB.dbSetJSON(HOL_KEY, h); }
+let holidays = await loadHolidays();
 
 function toast(msg){
   const t = document.getElementById('toast');

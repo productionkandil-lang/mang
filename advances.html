@@ -183,14 +183,14 @@
 Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
 
 const ADV_KEY = 'gm_att_advances';
-const EMP_KEY = 'gm_att_employees';
+const EMP_KEY = 'gm_att_employees_public';
 
-function loadAdvances(){ return JSON.parse(localStorage.getItem(ADV_KEY) || '[]'); }
-function saveAdvances(a){ localStorage.setItem(ADV_KEY, JSON.stringify(a)); }
-function loadEmployees(){ return JSON.parse(localStorage.getItem(EMP_KEY) || '[]'); }
+async function loadAdvances(){ return await DB.dbGetJSON(ADV_KEY, []); }
+async function saveAdvances(a){ await DB.dbSetJSON(ADV_KEY, a); }
+async function loadEmployees(){ return await DB.dbGetJSON(EMP_KEY, []); }
 
-let advances = loadAdvances();
-let employees = loadEmployees();
+let advances = await loadAdvances();
+let employees = await loadEmployees();
 let currentType = 'advance';
 let sortField = null;
 let sortDir = 'asc';

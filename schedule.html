@@ -144,12 +144,12 @@ Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
 const SCH_KEY = 'gm_att_schedule_overrides';
 const SYS_KEY = 'gm_att_systems';
 
-function loadSchedules(){ return JSON.parse(localStorage.getItem(SCH_KEY) || '[]'); }
-function saveSchedules(s){ localStorage.setItem(SCH_KEY, JSON.stringify(s)); }
-function loadSystems(){ return JSON.parse(localStorage.getItem(SYS_KEY) || '[]'); }
+async function loadSchedules(){ return await DB.dbGetJSON(SCH_KEY, []); }
+async function saveSchedules(s){ await DB.dbSetJSON(SCH_KEY, s); }
+async function loadSystems(){ return await DB.dbGetJSON(SYS_KEY, []); }
 
-let schedules = loadSchedules();
-let systems = loadSystems();
+let schedules = await loadSchedules();
+let systems = await loadSystems();
 
 function toast(msg){
   const t = document.getElementById('toast');

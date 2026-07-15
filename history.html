@@ -118,11 +118,11 @@
 Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
 
 const ARCHIVE_KEY = 'gm_att_archive';
-function load(key, def){ return JSON.parse(localStorage.getItem(key) || JSON.stringify(def)); }
-function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+async function load(key, def){ return await DB.dbGetJSON(key, def); }
+async function save(key, val){ await DB.dbSetJSON(key, val); }
 function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '<span style="color:#c15b4f;font-weight:700;" title="قيمة غير محسوبة - فيه مشكلة في البيانات">⚠ خطأ</span>'; return (Math.round(n*100)/100).toLocaleString(); }
 
-const archive = load(ARCHIVE_KEY, []);
+const archive = await load(ARCHIVE_KEY, []);
 let activeId = null;
 let selectedCodes = new Set();
 let detailSortField = null;

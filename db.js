@@ -31,4 +31,14 @@ async function dbSetJSON(key, value){
   }
 }
 
-window.DB = { dbGetJSON, dbSetJSON };
+async function dbDeleteKey(key){
+  try{
+    await firebase.firestore().collection('kv_store').doc(key).delete();
+    return true;
+  }catch(err){
+    console.error('dbDeleteKey failed for', key, err);
+    return false;
+  }
+}
+
+window.DB = { dbGetJSON, dbSetJSON, dbDeleteKey };

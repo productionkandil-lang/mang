@@ -160,19 +160,19 @@
 Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
 
 const RAW_KEY = 'gm_att_raw';
-const EMP_KEY = 'gm_att_employees';
+const EMP_KEY = 'gm_att_employees_public';
 const SYS_KEY = 'gm_att_systems';
 
 const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
-function loadRaw(){
-  const saved = JSON.parse(localStorage.getItem(RAW_KEY) || '[]');
+async function loadRaw(){
+  const saved = await DB.dbGetJSON(RAW_KEY, []);
   return saved.map(r => ({...r, date: new Date(r.date)}));
 }
-function saveRaw(rows){
-  localStorage.setItem(RAW_KEY, JSON.stringify(rows));
+async function saveRaw(rows){
+  await DB.dbSetJSON(RAW_KEY, rows);
 }
-function loadEmployees(){ return JSON.parse(localStorage.getItem(EMP_KEY) || '[]'); }
+async function loadEmployees(){ return await DB.dbGetJSON(EMP_KEY, []); }
 function resolveSystemId(emp, dk){
   if(emp.systemAssignments && emp.systemAssignments.length){
     const match = emp.systemAssignments.find(a => (!a.startDate || dk>=a.startDate) && (!a.endDate || dk<=a.endDate));
@@ -180,8 +180,8 @@ function resolveSystemId(emp, dk){
   }
   return emp.systemId;
 }
-function loadSystems(){
-  const s = JSON.parse(localStorage.getItem(SYS_KEY) || '[]');
+async function loadSystems(){
+  const s = await DB.dbGetJSON(SYS_KEY, []);
   let migrated = false;
   s.forEach(sys=>{
     if(!sys.weeklyOffDays){ sys.weeklyOffDays = sys.weeklyOffDay!=null ? [sys.weeklyOffDay] : [5]; migrated = true; }
@@ -191,13 +191,13 @@ function loadSystems(){
     }
     if(sys.overtime && sys.overtime.rate1MaxHours==null){ sys.overtime.rate1MaxHours = 1.5; migrated = true; }
   });
-  if(migrated) localStorage.setItem(SYS_KEY, JSON.stringify(s));
+  if(migrated) await DB.dbSetJSON(SYS_KEY, s);
   return s;
 }
 
-let rows = loadRaw();
-let employees = loadEmployees();
-let systems = loadSystems();
+let rows = await loadRaw();
+let employees = await loadEmployees();
+let systems = await loadSystems();
 let empFilterVal = 'all';
 let sortField = null;
 let sortDir = 'asc';
@@ -356,9 +356,9 @@ document.getElementById('addRowBtn').onclick = ()=>{
   toast('تم إضافة اليوم');
 };
 
-document.getElementById('saveBtn').onclick = ()=>{
-  saveRaw(rows);
-  localStorage.removeItem('gm_att_processed'); // force recalculation since data changed
+document.getElementById('saveBtn').onclick = async ()=>{
+  await saveRaw(rows);
+  await DB.dbDeleteKey('gm_att_processed'); // force recalculation since data changed
   dirty = new Set();
   renderTable();
   toast('تم الحفظ — روح صفحة رفع الملف واضغط "احسب الشهر" لتحديث النتائج');

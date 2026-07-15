@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GM Marine — نظام الحضور والرواتب</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+  }
+  header{
+    padding:22px 32px; border-bottom:1px solid var(--border); background:var(--bg-raised);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{font-family:'Cairo',sans-serif; font-weight:800; font-size:22px; margin:0; color:var(--brass-bright);}
+  header .tag{color:var(--text-dim); font-size:13px; margin-top:4px;}
+  nav a{color:var(--text-dim); text-decoration:none; margin-inline-start:10px; font-size:12px; padding:6px 3px; border-bottom:2px solid transparent;}
+  nav a:hover{color:var(--brass-bright);}
+  nav a.active{color:var(--brass-bright); border-color:var(--brass);}
+  main{max-width:1100px; margin:0 auto; padding:40px 24px 80px;}
+  .hero{margin-bottom:34px;}
+  .hero h2{font-family:'Cairo',sans-serif; font-size:26px; font-weight:800; margin:0 0 8px;}
+  .hero p{color:var(--text-dim); font-size:14.5px; max-width:640px; line-height:1.8; margin:0;}
+  .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px;}
+  .backup-bar{
+    display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 22px; margin-bottom:28px;
+  }
+  .backup-bar .txt{font-size:12.5px; color:var(--text-dim); max-width:520px; line-height:1.8;}
+  .backup-bar .txt b{color:var(--warn);}
+  .backup-actions{display:flex; gap:10px; flex-wrap:wrap;}
+  .backup-actions button{
+    font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); padding:9px 16px; font-size:13px; font-weight:600;
+  }
+  .backup-actions button:hover{border-color:var(--brass);}
+  .backup-actions button.primary{background:var(--brass); border-color:var(--brass); color:#1a1410;}
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:var(--surface-2); border:1px solid var(--brass); color:var(--text); padding:12px 22px;
+    border-radius:10px; font-size:13.5px; transition:.25s; pointer-events:none; z-index:50;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:24px;
+    text-decoration:none; color:var(--text); position:relative; transition:.15s; display:block;
+  }
+  .card:hover{border-color:var(--brass); transform:translateY(-2px);}
+  .card::before, .card::after{content:''; position:absolute; width:5px; height:5px; border-radius:50%; background:var(--brass); opacity:.5;}
+  .card::before{top:10px; right:10px;} .card::after{bottom:10px; left:10px;}
+  .card .num{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass-bright); letter-spacing:2px; margin-bottom:14px; display:block;}
+  .card h3{font-family:'Cairo',sans-serif; font-size:17px; margin:0 0 8px; font-weight:700;}
+  .card p{color:var(--text-dim); font-size:13px; line-height:1.7; margin:0;}
+  .card.disabled{opacity:.45; pointer-events:none;}
+  .card .soon{
+    position:absolute; top:20px; left:20px; font-size:10.5px; background:var(--surface-2);
+    border:1px solid var(--border); padding:3px 9px; border-radius:20px; color:var(--text-dim);
+  }
+  .stats-strip{display:flex; gap:14px; margin-top:36px; flex-wrap:wrap;}
+  .stat{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; min-width:140px;}
+  .stat .n{font-family:'IBM Plex Mono',monospace; font-size:24px; font-weight:600; color:var(--brass-bright);}
+  .stat .l{font-size:12px; color:var(--text-dim); margin-top:4px;}
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
+<header>
+  <div>
+    <h1>GM Marine — نظام الحضور والرواتب</h1>
+    <div class="tag">إدارة أنظمة العمل، الموظفين، وتقفيل الشهر</div>
+  </div>
+  <nav>
+    <a href="index.html" class="active">الرئيسية</a>
+    <a href="employees.html">الموظفين</a>
+    <a href="systems.html">أنظمة العمل</a>
+    <a href="upload.html">رفع الملف</a>
+    <a href="records.html">بيانات الشهر</a>
+    <a href="advances.html">السلف والخصومات</a>
+    <a href="holidays.html">الإجازات الرسمية</a>
+    <a href="schedule.html">مواعيد تاريخية</a>
+    <a href="van.html">عربية الوردية</a>
+    <a href="closing.html">تقفيل الشهر</a>
+    <a href="history.html">الشهور السابقة</a>
+  </nav>
+</header>
+
+<main>
+  <div class="backup-bar">
+    <div class="txt">
+      <b>البيانات دلوقتي متخزنة على Firebase (سحابة جوجل)</b> — مش في المتصفح بس، فهتلاقيها من أي جهاز تدخل بيه، ومحفوظة أوتوماتيك من غير ما تعمل حاجة. صفحات "أنظمة العمل، رفع الملف، بيانات الشهر..." لسه بيتم نقلها للسحابة واحدة واحدة — لحد ما ننقلها كلها، بياناتها بتفضل محلية على كل جهاز لوحده.
+    </div>
+  </div>
+
+  <div class="hero">
+    <h2>ابدأ من هنا</h2>
+    <p>الخطوة الأولى: اضبط أنظمة العمل (المواعيد، السماحية، الأوفرتايم، الجمعة). بعدها حدد نظام كل موظف ومرتبه. لسه شغالين على صفحة رفع ملف البصمة والتقرير النهائي.</p>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="stats-strip" id="statsStrip"></div>
+</main>
+
+<div class="toast" id="toast">تم</div>
+
+<script>
+Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+const cardsData = [
+  { href:'systems.html', num:'01', title:'أنظمة العمل', desc:'إعداد نظام 1 / 2 / 3 — المواعيد، السماحية، الأوفرتايم، قاعدة الجمعة، الخصومات، البدلات' },
+  { href:'employees.html', num:'02', title:'الموظفين', desc:'قائمة الأسماء، تحديد النظام لكل شخص، المرتب الأساسي وبدل المواصلات' },
+  { href:'upload.html', num:'03', title:'رفع ملف البصمة', desc:'رفع ملف الحضور الشهري وحساب الأوفرتايم والغياب أوتوماتيك حسب نظام كل موظف' },
+  { href:'records.html', num:'04', title:'بيانات الشهر', desc:'عرض وتعديل حضور وانصراف كل يوم لكل موظف' },
+  { href:'advances.html', num:'05', title:'السلف والخصومات', desc:'تسجيل السلف اليدوية والجزاءات لكل موظف' },
+  { href:'holidays.html', num:'06', title:'الإجازات الرسمية', desc:'أيام العطلات الرسمية — أجر كامل بدون احتساب غياب' },
+  { href:'schedule.html', num:'07', title:'مواعيد تاريخية', desc:'تغيير ميعاد الحضور الرسمي لنظام معين خلال فترة محددة' },
+  { href:'van.html', num:'08', title:'عربية الوردية', desc:'سجل يومي لمصاريف عربية نقل العمالة' },
+  { href:'closing.html', num:'09', title:'تقفيل الشهر', desc:'التقرير النهائي القابل للتخصيص، الصافي لكل موظف، والطباعة' },
+  { href:'history.html', num:'10', title:'الشهور السابقة', desc:'أرشيف كل الشهور المقفولة، وإعادة طباعة أي تقرير قديم' },
+];
+
+const cardsBox = document.getElementById('cards');
+cardsData.forEach(c=>{
+  const a = document.createElement('a');
+  a.className = 'card' + (c.soon ? ' disabled' : '');
+  a.href = c.href;
+  a.innerHTML = `
+    ${c.soon ? '<span class="soon">قريبًا</span>' : ''}
+    <span class="num">${c.num}</span>
+    <h3>${c.title}</h3>
+    <p>${c.desc}</p>
+  `;
+  cardsBox.appendChild(a);
+});
+
+const employees = await DB.dbGetJSON('gm_att_employees_public', []);
+const systems = JSON.parse(localStorage.getItem('gm_att_systems') || '[]'); /* لسه محلي لحد ما تتهاجر صفحة أنظمة العمل */
+document.getElementById('statsStrip').innerHTML = `
+  <div class="stat"><div class="n">${employees.length}</div><div class="l">موظف مسجل</div></div>
+  <div class="stat"><div class="n">${systems.length}</div><div class="l">نظام عمل معرّف (محلي لسه)</div></div>
+`;
+
+Auth.finalizeAuthUI();
+
+});
+</script>
+</body>
+</html>

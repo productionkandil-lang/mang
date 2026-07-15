@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الشهور السابقة — GM Marine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+  }
+  header{
+    padding:22px 32px; border-bottom:1px solid var(--border); background:var(--bg-raised);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{font-family:'Cairo',sans-serif; font-weight:800; font-size:22px; margin:0; color:var(--brass-bright);}
+  header .tag{color:var(--text-dim); font-size:13px; margin-top:4px;}
+  nav a{color:var(--text-dim); text-decoration:none; margin-inline-start:10px; font-size:12px; padding:6px 3px; border-bottom:2px solid transparent;}
+  nav a:hover{color:var(--brass-bright);}
+  nav a.active{color:var(--brass-bright); border-color:var(--brass);}
+  main{max-width:1300px; margin:0 auto; padding:28px 24px 100px;}
+
+  .months-list{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; margin-bottom:28px;}
+  .month-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px;
+    cursor:pointer; transition:.15s; position:relative;
+  }
+  .month-card:hover{border-color:var(--brass);}
+  .month-card.active{border-color:var(--brass); background:var(--surface-2);}
+  .month-card h3{font-family:'Cairo',sans-serif; font-size:15px; margin:0 0 6px;}
+  .month-card .date{font-size:11.5px; color:var(--text-dim); margin-bottom:10px;}
+  .month-card .n{font-family:'IBM Plex Mono',monospace; font-size:18px; color:var(--brass-bright); font-weight:600;}
+  .month-card .l{font-size:11px; color:var(--text-dim);}
+  .month-card .del{position:absolute; top:12px; left:12px; background:transparent; border:none; color:var(--danger); font-size:13px; cursor:pointer;}
+
+  .toolbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:12px; flex-wrap:wrap;}
+  .toolbar h2{font-family:'Cairo',sans-serif; font-size:19px; margin:0; font-weight:700;}
+  .actions{display:flex; gap:8px;}
+  button{
+    font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); padding:9px 15px; font-size:13px; font-weight:500;
+  }
+  button:hover{border-color:var(--brass);}
+  button.primary{background:var(--brass); border-color:var(--brass); color:#1a1410; font-weight:700;}
+
+  .table-wrap{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
+  table{width:100%; border-collapse:collapse; background:var(--surface);}
+  thead th{background:var(--surface-2); text-align:right; padding:10px 11px; font-size:11px; color:var(--text-dim); font-weight:700; border-bottom:1px solid var(--border); white-space:nowrap;}
+  thead th.sortable{cursor:pointer; user-select:none;}
+  thead th.sortable:hover{color:var(--brass-bright);}
+  .sort-arrow{font-size:9px; color:var(--brass-bright);}
+  tbody td{padding:8px 11px; border-bottom:1px solid var(--border); font-size:12.5px; white-space:nowrap; font-family:'IBM Plex Mono',monospace;}
+  tbody td.name-col{font-family:'Tajawal',sans-serif; font-weight:600;}
+  tbody tr:last-child td{border-bottom:none;}
+  td.net{color:var(--brass-bright); font-weight:700;}
+  .sel-check{accent-color:var(--brass); cursor:pointer;}
+  .empty{text-align:center; padding:70px 20px; color:var(--text-dim);}
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
+<header>
+  <div>
+    <h1>GM Marine — الشهور السابقة</h1>
+    <div class="tag">أرشيف كل الشهور المقفولة</div>
+  </div>
+  <nav>
+    <a href="index.html">الرئيسية</a>
+    <a href="employees.html">الموظفين</a>
+    <a href="systems.html">أنظمة العمل</a>
+    <a href="upload.html">رفع الملف</a>
+    <a href="records.html">بيانات الشهر</a>
+    <a href="advances.html">السلف والخصومات</a>
+    <a href="holidays.html">الإجازات الرسمية</a>
+    <a href="schedule.html">مواعيد تاريخية</a>
+    <a href="van.html">عربية الوردية</a>
+    <a href="closing.html">تقفيل الشهر</a>
+    <a href="history.html" class="active">الشهور السابقة</a>
+  </nav>
+</header>
+
+<main>
+  <div id="monthsList" class="months-list"></div>
+  <div id="emptyState" class="empty" style="display:none;">مفيش شهور مقفولة لسه</div>
+
+  <div id="detailSection" style="display:none;">
+    <div class="toolbar">
+      <h2 id="detailTitle"></h2>
+      <div class="actions">
+        <button id="printBtn" data-auth-safe="1">🖨 طباعة المحدد</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="detailTable">
+        <thead id="detailHead"></thead>
+        <tbody id="detailBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
+
+const ARCHIVE_KEY = 'gm_att_archive';
+function load(key, def){ return JSON.parse(localStorage.getItem(key) || JSON.stringify(def)); }
+function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '<span style="color:#c15b4f;font-weight:700;" title="قيمة غير محسوبة - فيه مشكلة في البيانات">⚠ خطأ</span>'; return (Math.round(n*100)/100).toLocaleString(); }
+
+const archive = load(ARCHIVE_KEY, []);
+let activeId = null;
+let selectedCodes = new Set();
+let detailSortField = null;
+let detailSortDir = 'asc';
+
+const COLUMN_LABELS = {
+  code:'الكود', name:'الاسم', system:'النظام', daysPresent:'أيام حضور', daysAbsent:'أيام غياب',
+  regularHours:'ساعات عادية', ot1Hours:'أوفرتايم ×1', ot15Hours:'أوفرتايم ×1.5', fridayOtHours:'أوفرتايم الجمعة',
+  lateMinutes:'دقائق تأخير', baseSalary:'المرتب الأساسي', hourlyRate:'أجر الساعة', otAmount:'قيمة الأوفرتايم',
+  lateAmount:'خصم التأخير', absentAmount:'خصم الغياب', transportAllowance:'بدل مواصلات', otherAllowances:'بدلات أخرى',
+  advanceDue:'سلفة مستحقة', deductionDue:'خصم يدوي', netSalary:'الصافي'
+};
+
+function renderMonthsList(){
+  const box = document.getElementById('monthsList');
+  if(!archive.length){
+    document.getElementById('emptyState').style.display = 'block';
+    return;
+  }
+  box.innerHTML = '';
+  archive.slice().reverse().forEach(a=>{
+    const totalNet = a.rows.reduce((s,r)=>s+r.netSalary,0);
+    const vanTotal = a.vanTotal || 0;
+    const el = document.createElement('div');
+    el.className = 'month-card' + (a.id===activeId ? ' active':'');
+    el.innerHTML = `
+      <button class="del" data-id="${a.id}" title="حذف من الأرشيف">✕</button>
+      <h3>${a.label}</h3>
+      <div class="date">اتقفل في ${new Date(a.closedAt).toLocaleDateString('ar-EG')}</div>
+      <div class="n">${fmt(totalNet)}</div>
+      <div class="l">${a.rows.length} موظف — إجمالي الصافي</div>
+      ${vanTotal ? `<div class="l" style="margin-top:4px; color:var(--brass-bright);">+ ${fmt(vanTotal)} عربية الوردية</div>` : ''}
+    `;
+    el.onclick = (e)=>{ if(e.target.classList.contains('del')) return; activeId = a.id; selectedCodes = new Set(); renderMonthsList(); renderDetail(); };
+    box.appendChild(el);
+  });
+  box.querySelectorAll('.del').forEach(btn=>{
+    btn.onclick = e=>{
+      e.stopPropagation();
+      if(!confirm('حذف هذا الشهر من الأرشيف نهائيًا؟')) return;
+      const idx = archive.findIndex(a=>a.id===e.target.dataset.id);
+      archive.splice(idx,1);
+      save(ARCHIVE_KEY, archive);
+      if(activeId===e.target.dataset.id){ activeId=null; document.getElementById('detailSection').style.display='none'; }
+      renderMonthsList();
+    };
+  });
+}
+
+function renderDetail(){
+  const a = archive.find(x=>x.id===activeId);
+  if(!a) return;
+  document.getElementById('detailSection').style.display = 'block';
+  document.getElementById('detailTitle').textContent = 'تفاصيل: ' + a.label;
+
+  const visibleKeys = Object.keys(a.columnPrefs || {}).filter(k=> a.columnPrefs[k]);
+  const cols = ['code','name', ...visibleKeys.filter(k=>k!=='code'&&k!=='name'), 'netSalary']
+    .filter((v,i,arr)=>arr.indexOf(v)===i);
+
+  document.getElementById('detailHead').innerHTML = '<tr><th></th>' + cols.map(k=>
+    `<th class="sortable" data-sort="${k}">${COLUMN_LABELS[k]||k} <span class="sort-arrow" id="arrow-${k}">${detailSortField===k ? (detailSortDir==='asc'?'▲':'▼') : ''}</span></th>`
+  ).join('') + '</tr>';
+  document.querySelectorAll('#detailHead th.sortable').forEach(th=>{
+    th.onclick = ()=>{
+      const field = th.dataset.sort;
+      if(detailSortField===field){ detailSortDir = detailSortDir==='asc' ? 'desc' : 'asc'; }
+      else { detailSortField = field; detailSortDir = 'asc'; }
+      renderDetail();
+    };
+  });
+
+  const body = document.getElementById('detailBody');
+  body.innerHTML = '';
+  const sortedRows = a.rows.slice().sort((x,y)=>{
+    if(detailSortField){
+      const xv = detailSortField==='system' ? x.systemName : x[detailSortField];
+      const yv = detailSortField==='system' ? y.systemName : y[detailSortField];
+      let cmp = (typeof xv === 'number' && typeof yv === 'number') ? xv-yv : String(xv).localeCompare(String(yv),'ar',{numeric:true});
+      return detailSortDir==='asc' ? cmp : -cmp;
+    }
+    return x.name.localeCompare(y.name,'ar');
+  });
+  sortedRows.forEach(r=>{
+    const tr = document.createElement('tr');
+    const cells = cols.map(k=>{
+      let val = k==='system' ? r.systemName : r[k];
+      if(typeof val === 'number') val = fmt(val);
+      return `<td class="${k==='name'?'name-col':''} ${k==='netSalary'?'net':''}">${val ?? '—'}</td>`;
+    }).join('');
+    tr.innerHTML = `<td><input type="checkbox" class="sel-check" data-auth-safe="1" data-code="${r.code}"></td>${cells}`;
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll('.sel-check').forEach(chk=>{
+    chk.onchange = e=>{
+      if(e.target.checked) selectedCodes.add(e.target.dataset.code);
+      else selectedCodes.delete(e.target.dataset.code);
+    };
+  });
+}
+
+document.getElementById('printBtn').onclick = ()=>{
+  if(!selectedCodes.size){ alert('حدد موظف واحد أو اتنين للطباعة'); return; }
+  if(selectedCodes.size > 2){ alert('حد أقصى موظفين في نفس الصفحة'); return; }
+  const a = archive.find(x=>x.id===activeId);
+  const rows = a.rows.filter(r=>selectedCodes.has(r.code));
+  printPayslips(rows, a.label);
+};
+
+function printPayslips(rows, periodLabel){
+  const win = window.open('', '_blank');
+  const cardHtml = rows.map(r => payslipCardHtml(r, periodLabel)).join('');
+  const cols = rows.length === 2 ? '1fr 1fr' : '1fr';
+  win.document.write(`
+    <html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير راتب</title>
+    <style>
+      body{ font-family: Tajawal, Arial, sans-serif; margin:0; padding:24px; color:#1a1a1a; }
+      .wrap{ display:grid; grid-template-columns:${cols}; gap:20px; }
+      .card{ border:1.5px solid #333; border-radius:10px; padding:18px; }
+      .card h2{ font-size:16px; margin:0 0 2px; }
+      .card .sub{ font-size:11px; color:#555; margin-bottom:14px; }
+      table{ width:100%; border-collapse:collapse; font-size:12px; }
+      td{ padding:5px 4px; border-bottom:1px solid #ddd; }
+      td.label{ color:#555; }
+      td.val{ text-align:left; font-family:'Courier New',monospace; font-weight:600; }
+      tr.net td{ font-weight:800; font-size:14px; border-top:2px solid #333; border-bottom:none; padding-top:8px; }
+      .sig{ margin-top:24px; display:flex; justify-content:space-between; font-size:11px; color:#555; }
+      .sig div{ border-top:1px solid #999; padding-top:6px; width:40%; text-align:center; }
+      @media print{ body{ padding:10px; } }
+    </style></head>
+    <body>
+      <div class="wrap">${cardHtml}</div>
+      <script>window.onload = () => window.print();<\/script>
+    </body></html>
+  `);
+  win.document.close();
+}
+
+function payslipCardHtml(r, periodLabel){
+  const row = (label, val, isNet) => `<tr class="${isNet?'net':''}"><td class="label">${label}</td><td class="val">${fmt(val)}</td></tr>`;
+  return `
+    <div class="card">
+      <h2>${r.name}</h2>
+      <div class="sub">كود: ${r.code} — النظام: ${r.systemName} — ${periodLabel}</div>
+      <table>
+        ${row('المرتب الأساسي', r.baseSalary)}
+        ${row('أيام الحضور', r.daysPresent)}
+        ${row('أيام الغياب', r.daysAbsent)}
+        ${row('قيمة الأوفرتايم', r.otAmount)}
+        ${row('بدل المواصلات', r.transportAllowance)}
+        ${row('بدلات أخرى', r.otherAllowances)}
+        ${row('خصم التأخير', -r.lateAmount)}
+        ${row('خصم الغياب', -r.absentAmount)}
+        ${row('سلفة مستحقة', -r.advanceDue)}
+        ${row('خصم يدوي', -r.deductionDue)}
+        ${row('الصافي', r.netSalary, true)}
+      </table>
+      <div class="sig">
+        <div>توقيع الموظف</div>
+        <div>توقيع الإدارة</div>
+      </div>
+    </div>
+  `;
+}
+
+renderMonthsList();
+if(archive.length){ activeId = archive[archive.length-1].id; renderMonthsList(); renderDetail(); }
+
+Auth.finalizeAuthUI();
+
+});
+</script>
+</body>
+</html>

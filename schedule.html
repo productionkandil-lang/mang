@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مواعيد العمل التاريخية — GM Marine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+  }
+  header{
+    padding:22px 32px; border-bottom:1px solid var(--border); background:var(--bg-raised);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{font-family:'Cairo',sans-serif; font-weight:800; font-size:22px; margin:0; color:var(--brass-bright);}
+  header .tag{color:var(--text-dim); font-size:13px; margin-top:4px;}
+  nav a{color:var(--text-dim); text-decoration:none; margin-inline-start:10px; font-size:12px; padding:6px 3px; border-bottom:2px solid transparent;}
+  nav a:hover{color:var(--brass-bright);}
+  nav a.active{color:var(--brass-bright); border-color:var(--brass);}
+  main{max-width:1000px; margin:0 auto; padding:28px 24px 80px;}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px; margin-bottom:20px; position:relative;}
+  .card::before, .card::after{content:''; position:absolute; width:5px; height:5px; border-radius:50%; background:var(--brass); opacity:.5;}
+  .card::before{top:10px; right:10px;} .card::after{bottom:10px; left:10px;}
+  .card h3{font-family:'Cairo',sans-serif; font-size:15px; margin:0 0 16px; color:var(--brass-bright); padding-bottom:10px; border-bottom:1px solid var(--border);}
+
+  .form-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; align-items:end;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
+  .field input, .field select{
+    width:100%; background:var(--bg-raised); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); padding:9px 11px; font-family:'IBM Plex Mono',monospace; font-size:13px;
+  }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--brass);}
+  button{
+    font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); padding:9px 16px; font-size:13px; font-weight:500;
+  }
+  button:hover{border-color:var(--brass);}
+  button.primary{background:var(--brass); border-color:var(--brass); color:#1a1410; font-weight:700;}
+  button.primary:hover{background:var(--brass-bright);}
+  .hint{font-size:12px; color:var(--text-dim); margin-bottom:16px; line-height:1.8;}
+
+  .table-wrap{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
+  table{width:100%; border-collapse:collapse; background:var(--surface);}
+  thead th{background:var(--surface-2); text-align:right; padding:11px 12px; font-size:11.5px; color:var(--text-dim); font-weight:700; border-bottom:1px solid var(--border); white-space:nowrap;}
+  tbody td{padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  td.mono{font-family:'IBM Plex Mono',monospace;}
+  .del-btn{background:transparent; border:none; color:var(--danger); cursor:pointer; font-size:14px; padding:4px 8px;}
+  .empty{text-align:center; padding:60px 20px; color:var(--text-dim);}
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:var(--surface-2); border:1px solid var(--brass); color:var(--text); padding:12px 22px;
+    border-radius:10px; font-size:13.5px; transition:.25s; pointer-events:none; z-index:50;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
+<header>
+  <div>
+    <h1>GM Marine — مواعيد العمل التاريخية</h1>
+    <div class="tag">تغيير ميعاد الحضور الرسمي لنظام معين خلال فترة محددة (مثلاً توقيت شتوي/صيفي)</div>
+  </div>
+  <nav>
+    <a href="index.html">الرئيسية</a>
+    <a href="employees.html">الموظفين</a>
+    <a href="systems.html">أنظمة العمل</a>
+    <a href="upload.html">رفع الملف</a>
+    <a href="records.html">بيانات الشهر</a>
+    <a href="advances.html">السلف والخصومات</a>
+    <a href="holidays.html">الإجازات الرسمية</a>
+    <a href="schedule.html" class="active">مواعيد تاريخية</a>
+    <a href="van.html">عربية الوردية</a>
+    <a href="closing.html">تقفيل الشهر</a>
+    <a href="history.html">الشهور السابقة</a>
+  </nav>
+</header>
+
+<main>
+  <div class="card">
+    <h3>إضافة تغيير مؤقت في ميعاد الحضور</h3>
+    <div class="hint">خلال الفترة المحددة، أي حساب لنظام العمل ده هياخد الميعاد الجديد بدل الميعاد الرسمي الأساسي المسجل في صفحة أنظمة العمل. برّه الفترة دي، بيرجع الميعاد الأساسي تلقائيًا.</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>النظام</label>
+        <select id="sysSelect"></select>
+      </div>
+      <div class="field">
+        <label>الميعاد الجديد</label>
+        <input type="time" id="timeInput">
+      </div>
+      <div class="field">
+        <label>من تاريخ</label>
+        <input type="date" id="startInput">
+      </div>
+      <div class="field">
+        <label>لغاية تاريخ</label>
+        <input type="date" id="endInput">
+      </div>
+      <div class="field">
+        <label>ملاحظة</label>
+        <input type="text" id="noteInput" placeholder="اختياري">
+      </div>
+      <div class="field">
+        <button class="primary" id="addBtn" style="width:100%;">إضافة</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="schTable">
+      <thead>
+        <tr><th>النظام</th><th>الميعاد الجديد</th><th>من</th><th>لغاية</th><th>ملاحظة</th><th></th></tr>
+      </thead>
+      <tbody id="schBody"></tbody>
+    </table>
+  </div>
+  <div id="emptyState" class="empty" style="display:none;">مفيش تغييرات مواعيد مسجلة</div>
+</main>
+
+<div class="toast" id="toast">تم الحفظ</div>
+
+<script>
+Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
+
+const SCH_KEY = 'gm_att_schedule_overrides';
+const SYS_KEY = 'gm_att_systems';
+
+function loadSchedules(){ return JSON.parse(localStorage.getItem(SCH_KEY) || '[]'); }
+function saveSchedules(s){ localStorage.setItem(SCH_KEY, JSON.stringify(s)); }
+function loadSystems(){ return JSON.parse(localStorage.getItem(SYS_KEY) || '[]'); }
+
+let schedules = loadSchedules();
+let systems = loadSystems();
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function renderSysSelect(){
+  const sel = document.getElementById('sysSelect');
+  if(!systems.length){ sel.innerHTML = '<option value="">لا يوجد أنظمة</option>'; return; }
+  sel.innerHTML = systems.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+function renderTable(){
+  const body = document.getElementById('schBody');
+  const empty = document.getElementById('emptyState');
+  if(!schedules.length){
+    document.getElementById('schTable').style.display='none';
+    empty.style.display='block';
+    return;
+  }
+  document.getElementById('schTable').style.display='table';
+  empty.style.display='none';
+
+  body.innerHTML = '';
+  schedules.slice().sort((a,b)=> a.startDate.localeCompare(b.startDate)).forEach(s=>{
+    const idx = schedules.indexOf(s);
+    const sys = systems.find(x=>x.id===s.systemId);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${sys ? sys.name : '—'}</td>
+      <td class="mono">${s.officialStartTime}</td>
+      <td class="mono">${s.startDate}</td>
+      <td class="mono">${s.endDate}</td>
+      <td>${s.note||'—'}</td>
+      <td><button class="del-btn" data-idx="${idx}">✕</button></td>
+    `;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.onclick = e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      if(!confirm('حذف هذا التغيير؟')) return;
+      schedules.splice(idx,1);
+      saveSchedules(schedules);
+      renderTable();
+      toast('تم الحذف');
+    };
+  });
+}
+
+document.getElementById('addBtn').onclick = ()=>{
+  const systemId = parseInt(document.getElementById('sysSelect').value);
+  const officialStartTime = document.getElementById('timeInput').value;
+  const startDate = document.getElementById('startInput').value;
+  const endDate = document.getElementById('endInput').value;
+  const note = document.getElementById('noteInput').value.trim();
+
+  if(!systemId || !officialStartTime || !startDate || !endDate){ alert('املأ كل الحقول المطلوبة'); return; }
+  if(endDate < startDate){ alert('تاريخ النهاية قبل تاريخ البداية'); return; }
+
+  schedules.push({ id:'sch_'+Date.now().toString(36), systemId, officialStartTime, startDate, endDate, note });
+  saveSchedules(schedules);
+  document.getElementById('timeInput').value = '';
+  document.getElementById('startInput').value = '';
+  document.getElementById('endInput').value = '';
+  document.getElementById('noteInput').value = '';
+  renderTable();
+  toast('تم الإضافة');
+};
+
+renderSysSelect();
+renderTable();
+
+Auth.finalizeAuthUI();
+
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>السلف والخصومات — GM Marine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+  }
+  header{
+    padding:22px 32px; border-bottom:1px solid var(--border); background:var(--bg-raised);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{font-family:'Cairo',sans-serif; font-weight:800; font-size:22px; margin:0; color:var(--brass-bright);}
+  header .tag{color:var(--text-dim); font-size:13px; margin-top:4px;}
+  nav a{color:var(--text-dim); text-decoration:none; margin-inline-start:10px; font-size:12px; padding:6px 3px; border-bottom:2px solid transparent;}
+  nav a:hover{color:var(--brass-bright);}
+  nav a.active{color:var(--brass-bright); border-color:var(--brass);}
+  main{max-width:1200px; margin:0 auto; padding:28px 24px 80px;}
+
+  .stats{display:flex; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
+  .stat{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 18px; min-width:140px;}
+  .stat .n{font-family:'IBM Plex Mono',monospace; font-size:20px; font-weight:600; color:var(--brass-bright);}
+  .stat .l{font-size:11.5px; color:var(--text-dim); margin-top:2px;}
+
+  button{
+    font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); padding:9px 16px; font-size:13.5px; font-weight:500;
+  }
+  button:hover{border-color:var(--brass);}
+  button.primary{background:var(--brass); border-color:var(--brass); color:#1a1410; font-weight:700;}
+  button.primary:hover{background:var(--brass-bright);}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px; margin-bottom:20px; position:relative;}
+  .card::before, .card::after{content:''; position:absolute; width:5px; height:5px; border-radius:50%; background:var(--brass); opacity:.5;}
+  .card::before{top:10px; right:10px;} .card::after{bottom:10px; left:10px;}
+  .card h3{font-family:'Cairo',sans-serif; font-size:15px; margin:0 0 16px; color:var(--brass-bright); padding-bottom:10px; border-bottom:1px solid var(--border);}
+
+  .form-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; align-items:end;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
+  .field select, .field input{
+    width:100%; background:var(--bg-raised); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); padding:9px 11px; font-family:'IBM Plex Mono',monospace; font-size:13px;
+  }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--brass);}
+  .type-toggle{display:flex; gap:8px;}
+  .type-btn{flex:1; text-align:center; padding:9px; border-radius:8px; border:1px solid var(--border); background:var(--bg-raised); cursor:pointer; font-size:13px;}
+  .type-btn.active-advance{background:rgba(63,143,138,.18); border-color:var(--teal); color:var(--teal);}
+  .type-btn.active-deduction{background:rgba(193,91,79,.18); border-color:var(--danger); color:var(--danger);}
+
+  .table-wrap{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
+  table{width:100%; border-collapse:collapse; background:var(--surface);}
+  thead th{background:var(--surface-2); text-align:right; padding:11px 12px; font-size:11.5px; color:var(--text-dim); font-weight:700; border-bottom:1px solid var(--border); white-space:nowrap;}
+  thead th.sortable{cursor:pointer; user-select:none;}
+  thead th.sortable:hover{color:var(--brass-bright);}
+  .sort-arrow{font-size:10px; color:var(--brass-bright);}
+  tbody td{padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:rgba(200,137,79,.04);}
+  td.name-col{font-weight:600;}
+  .type-badge{padding:3px 10px; border-radius:14px; font-size:11px; font-weight:700; border:1px solid;}
+  .type-badge.advance{color:var(--teal); border-color:var(--teal); background:rgba(63,143,138,.08);}
+  .type-badge.deduction{color:var(--danger); border-color:var(--danger); background:rgba(193,91,79,.08);}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  input.edit-input{
+    width:90px; background:var(--bg-raised); border:1px solid var(--border); border-radius:6px;
+    color:var(--text); padding:6px 8px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;
+  }
+  input.edit-input:focus{outline:none; border-color:var(--brass);}
+  input.edit-note{width:130px;}
+  input.edit-installments{width:60px;}
+  .progress-bar{width:80px; height:6px; background:var(--bg-raised); border-radius:4px; overflow:hidden; display:inline-block; margin-inline-start:8px; vertical-align:middle;}
+  .progress-bar .fill{height:100%; background:var(--brass);}
+  .del-btn{background:transparent; border:none; color:var(--danger); cursor:pointer; font-size:14px; padding:4px 8px;}
+  .closed-badge{font-size:10.5px; padding:2px 8px; border-radius:10px; background:var(--surface-2); color:var(--text-dim); border:1px solid var(--border);}
+  .empty{text-align:center; padding:60px 20px; color:var(--text-dim);}
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:var(--surface-2); border:1px solid var(--brass); color:var(--text); padding:12px 22px;
+    border-radius:10px; font-size:13.5px; transition:.25s; pointer-events:none; z-index:50;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
+<header>
+  <div>
+    <h1>GM Marine — السلف والخصومات</h1>
+    <div class="tag">تسجيل سلف الموظفين والجزاءات اليدوية — بتتطبق أوتوماتيك في تقفيل الشهر</div>
+  </div>
+  <nav>
+    <a href="index.html">الرئيسية</a>
+    <a href="employees.html">الموظفين</a>
+    <a href="systems.html">أنظمة العمل</a>
+    <a href="upload.html">رفع الملف</a>
+    <a href="records.html">بيانات الشهر</a>
+    <a href="advances.html" class="active">السلف والخصومات</a>
+    <a href="holidays.html">الإجازات الرسمية</a>
+    <a href="schedule.html">مواعيد تاريخية</a>
+    <a href="van.html">عربية الوردية</a>
+    <a href="closing.html">تقفيل الشهر</a>
+    <a href="history.html">الشهور السابقة</a>
+  </nav>
+</header>
+
+<main>
+  <div class="stats" id="stats"></div>
+
+  <div class="card">
+    <h3>إضافة سلفة أو خصم جديد</h3>
+    <div class="form-grid">
+      <div class="field">
+        <label>النوع</label>
+        <div class="type-toggle">
+          <div class="type-btn" id="btnAdvance">سلفة</div>
+          <div class="type-btn" id="btnDeduction">خصم / جزاء</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>الموظف</label>
+        <select id="empSelect"></select>
+      </div>
+      <div class="field">
+        <label>المبلغ الإجمالي</label>
+        <input type="number" id="amountInput" placeholder="0">
+      </div>
+      <div class="field">
+        <label>عدد الشهور (تقسيط)</label>
+        <input type="number" id="installmentsInput" value="1" min="1">
+      </div>
+      <div class="field">
+        <label>ملاحظات</label>
+        <input type="text" id="noteInput" placeholder="اختياري">
+      </div>
+      <div class="field">
+        <button class="primary" id="addBtn" style="width:100%;">إضافة</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="advTable">
+      <thead>
+        <tr>
+          <th>النوع</th>
+          <th class="sortable" data-sort="employeeName">الموظف <span class="sort-arrow" id="arrow-employeeName"></span></th>
+          <th class="sortable" data-sort="totalAmount">الإجمالي <span class="sort-arrow" id="arrow-totalAmount"></span></th>
+          <th>التقسيط</th>
+          <th>المستحق هذا الشهر</th>
+          <th>المدفوع حتى الآن</th>
+          <th class="sortable" data-sort="remaining">المتبقي <span class="sort-arrow" id="arrow-remaining"></span></th>
+          <th>ملاحظات</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="advBody"></tbody>
+    </table>
+  </div>
+  <div id="emptyState" class="empty" style="display:none;">مفيش سلف أو خصومات مسجلة</div>
+</main>
+
+<div class="toast" id="toast">تم الحفظ</div>
+
+<script>
+Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
+
+const ADV_KEY = 'gm_att_advances';
+const EMP_KEY = 'gm_att_employees';
+
+function loadAdvances(){ return JSON.parse(localStorage.getItem(ADV_KEY) || '[]'); }
+function saveAdvances(a){ localStorage.setItem(ADV_KEY, JSON.stringify(a)); }
+function loadEmployees(){ return JSON.parse(localStorage.getItem(EMP_KEY) || '[]'); }
+
+let advances = loadAdvances();
+let employees = loadEmployees();
+let currentType = 'advance';
+let sortField = null;
+let sortDir = 'asc';
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function monthlyDue(rec){
+  const perInstallment = rec.totalAmount / rec.installments;
+  return Math.min(perInstallment, rec.remaining);
+}
+
+function renderEmpSelect(){
+  const sel = document.getElementById('empSelect');
+  if(!employees.length){
+    sel.innerHTML = '<option value="">لا يوجد موظفين — أضف موظف الأول من صفحة الموظفين</option>';
+    return;
+  }
+  sel.innerHTML = employees.map(e=>`<option value="${e.code}">${e.name} (${e.code})</option>`).join('');
+}
+
+function renderTypeToggle(){
+  document.getElementById('btnAdvance').className = 'type-btn' + (currentType==='advance' ? ' active-advance' : '');
+  document.getElementById('btnDeduction').className = 'type-btn' + (currentType==='deduction' ? ' active-deduction' : '');
+}
+document.getElementById('btnAdvance').onclick = ()=>{ currentType='advance'; renderTypeToggle(); };
+document.getElementById('btnDeduction').onclick = ()=>{ currentType='deduction'; renderTypeToggle(); };
+
+function renderStats(){
+  const active = advances.filter(a=>a.remaining>0);
+  const totalAdvOutstanding = active.filter(a=>a.type==='advance').reduce((s,a)=>s+a.remaining,0);
+  const totalDedOutstanding = active.filter(a=>a.type==='deduction').reduce((s,a)=>s+a.remaining,0);
+  const dueThisMonth = active.reduce((s,a)=>s+monthlyDue(a),0);
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="n">${active.length}</div><div class="l">سجل نشط</div></div>
+    <div class="stat"><div class="n">${totalAdvOutstanding.toLocaleString()}</div><div class="l">سلف متبقية</div></div>
+    <div class="stat"><div class="n">${totalDedOutstanding.toLocaleString()}</div><div class="l">خصومات متبقية</div></div>
+    <div class="stat"><div class="n">${dueThisMonth.toLocaleString()}</div><div class="l">مستحق هذا الشهر</div></div>
+  `;
+}
+
+function renderTable(){
+  const body = document.getElementById('advBody');
+  const empty = document.getElementById('emptyState');
+  if(!advances.length){
+    document.getElementById('advTable').style.display='none';
+    empty.style.display='block';
+    return;
+  }
+  document.getElementById('advTable').style.display='table';
+  empty.style.display='none';
+
+  let list = advances.map((rec,i)=>({...rec, _origIdx:i}));
+  if(sortField){
+    list.sort((a,b)=>{
+      const av = a[sortField], bv = b[sortField];
+      let cmp;
+      if(typeof av === 'number') cmp = av - bv;
+      else cmp = String(av).localeCompare(String(bv), 'ar', { numeric:true });
+      return sortDir==='asc' ? cmp : -cmp;
+    });
+  } else {
+    list.reverse();
+  }
+
+  ['employeeName','totalAmount','remaining'].forEach(k=>{
+    const el = document.getElementById('arrow-'+k);
+    if(el) el.textContent = sortField===k ? (sortDir==='asc'?'▲':'▼') : '';
+  });
+
+  body.innerHTML = '';
+  list.forEach(rec=>{
+    const due = monthlyDue(rec);
+    const paid = rec.totalAmount - rec.remaining;
+    const pct = rec.totalAmount>0 ? Math.round((paid / rec.totalAmount) * 100) : 100;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="type-badge ${rec.type}">${rec.type==='advance' ? 'سلفة' : 'خصم'}</span></td>
+      <td class="name-col">${rec.employeeName}</td>
+      <td class="mono"><input type="number" class="edit-input edit-total" data-idx="${rec._origIdx}" value="${rec.totalAmount}"></td>
+      <td class="mono"><input type="number" class="edit-input edit-installments" data-idx="${rec._origIdx}" value="${rec.installments}" min="1"></td>
+      <td class="mono">${rec.remaining>0 ? due.toLocaleString() : '—'}</td>
+      <td class="mono">${paid.toLocaleString()}</td>
+      <td class="mono">${rec.remaining.toLocaleString()}
+        <span class="progress-bar"><span class="fill" style="width:${pct}%"></span></span>
+        ${rec.remaining<=0 ? '<span class="closed-badge">مكتمل</span>' : ''}
+      </td>
+      <td><input type="text" class="edit-input edit-note" data-idx="${rec._origIdx}" value="${rec.note||''}" placeholder="—"></td>
+      <td><button class="del-btn" data-idx="${rec._origIdx}">✕</button></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll('.edit-total').forEach(inp=>{
+    inp.onchange = e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      const newTotal = parseFloat(e.target.value);
+      if(isNaN(newTotal) || newTotal<0){ renderTable(); return; }
+      const rec = advances[idx];
+      const delta = newTotal - rec.totalAmount;
+      rec.totalAmount = newTotal;
+      rec.remaining = Math.max(0, Math.min(newTotal, rec.remaining + delta));
+      saveAdvances(advances);
+      renderStats(); renderTable();
+      toast('تم التعديل');
+    };
+  });
+  body.querySelectorAll('.edit-installments').forEach(inp=>{
+    inp.onchange = e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      const val = parseInt(e.target.value) || 1;
+      advances[idx].installments = Math.max(1, val);
+      saveAdvances(advances);
+      renderStats(); renderTable();
+      toast('تم التعديل');
+    };
+  });
+  body.querySelectorAll('.edit-note').forEach(inp=>{
+    inp.onchange = e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      advances[idx].note = e.target.value.trim();
+      saveAdvances(advances);
+      toast('تم التعديل');
+    };
+  });
+
+  body.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.onclick = e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      if(!confirm('حذف هذا السجل نهائيًا؟')) return;
+      advances.splice(idx,1);
+      saveAdvances(advances);
+      renderStats(); renderTable();
+      toast('تم الحذف');
+    };
+  });
+}
+
+document.querySelectorAll('th.sortable').forEach(th=>{
+  th.onclick = ()=>{
+    const field = th.dataset.sort;
+    if(sortField===field){ sortDir = sortDir==='asc' ? 'desc' : 'asc'; }
+    else { sortField = field; sortDir = 'asc'; }
+    renderTable();
+  };
+});
+
+document.getElementById('addBtn').onclick = ()=>{
+  const code = document.getElementById('empSelect').value;
+  const emp = employees.find(e=>e.code===code);
+  const amount = parseFloat(document.getElementById('amountInput').value);
+  const installments = parseInt(document.getElementById('installmentsInput').value) || 1;
+  const note = document.getElementById('noteInput').value.trim();
+
+  if(!emp){ alert('اختار موظف'); return; }
+  if(!amount || amount<=0){ alert('اكتب مبلغ صحيح'); return; }
+
+  advances.push({
+    id: 'adv_'+Date.now().toString(36),
+    type: currentType,
+    employeeCode: emp.code, employeeName: emp.name,
+    totalAmount: amount, installments, remaining: amount,
+    note, createdAt: Date.now()
+  });
+  saveAdvances(advances);
+  document.getElementById('amountInput').value = '';
+  document.getElementById('installmentsInput').value = '1';
+  document.getElementById('noteInput').value = '';
+  renderStats(); renderTable();
+  toast('تم الإضافة');
+};
+
+renderEmpSelect();
+renderTypeToggle();
+renderStats();
+renderTable();
+
+Auth.finalizeAuthUI();
+
+});
+</script>
+</body>
+</html>

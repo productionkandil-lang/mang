@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>استيراد نسخة قديمة — GM Marine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+  }
+  header{
+    padding:22px 32px; border-bottom:1px solid var(--border); background:var(--bg-raised);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{font-family:'Cairo',sans-serif; font-weight:800; font-size:22px; margin:0; color:var(--brass-bright);}
+  header .tag{color:var(--text-dim); font-size:13px; margin-top:4px;}
+  nav a{color:var(--text-dim); text-decoration:none; margin-inline-start:10px; font-size:12px; padding:6px 3px; border-bottom:2px solid transparent;}
+  nav a:hover{color:var(--brass-bright);}
+  nav a.active{color:var(--brass-bright); border-color:var(--brass);}
+  main{max-width:760px; margin:0 auto; padding:28px 24px 80px;}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px; margin-bottom:20px; position:relative;}
+  .card::before, .card::after{content:''; position:absolute; width:5px; height:5px; border-radius:50%; background:var(--brass); opacity:.5;}
+  .card::before{top:10px; right:10px;} .card::after{bottom:10px; left:10px;}
+  .card h3{font-family:'Cairo',sans-serif; font-size:16px; margin:0 0 14px; color:var(--brass-bright); padding-bottom:10px; border-bottom:1px solid var(--border);}
+  .hint{font-size:13px; color:var(--text-dim); margin-bottom:18px; line-height:1.9;}
+  .hint b{color:var(--warn);}
+
+  .drop{
+    border:2px dashed var(--border); border-radius:12px; padding:30px; text-align:center;
+    color:var(--text-dim); font-size:13.5px; cursor:pointer; margin-bottom:18px;
+  }
+  .drop:hover{border-color:var(--brass); color:var(--brass-bright);}
+  input[type=file]{display:none;}
+  button{
+    font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); padding:11px 20px; font-size:14px; font-weight:600;
+  }
+  button:hover{border-color:var(--brass);}
+  button:disabled{opacity:.6; cursor:not-allowed;}
+  button.primary{background:var(--brass); border-color:var(--brass); color:#1a1410;}
+  button.primary:hover{background:var(--brass-bright);}
+
+  .log{
+    background:var(--bg-raised); border:1px solid var(--border); border-radius:10px; padding:14px 16px;
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:2; max-height:320px; overflow-y:auto; margin-top:16px; display:none;
+  }
+  .log .ok{color:var(--success);}
+  .log .warn{color:var(--warn);}
+  .log .err{color:var(--danger);}
+  .filename{color:var(--brass-bright); font-weight:700; margin-bottom:14px;}
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
+
+<header>
+  <div>
+    <h1>GM Marine — استيراد نسخة قديمة</h1>
+    <div class="tag">استرجاع ملف النسخة الاحتياطية اللي نزّلته قبل التحويل لـ Firebase (أدمن فقط)</div>
+  </div>
+  <nav>
+    <a href="index.html">الرئيسية</a>
+    <a href="employees.html">الموظفين</a>
+    <a href="systems.html">أنظمة العمل</a>
+    <a href="upload.html">رفع الملف</a>
+    <a href="records.html">بيانات الشهر</a>
+    <a href="advances.html">السلف والخصومات</a>
+    <a href="holidays.html">الإجازات الرسمية</a>
+    <a href="schedule.html">مواعيد تاريخية</a>
+    <a href="van.html">عربية الوردية</a>
+    <a href="closing.html">تقفيل الشهر</a>
+    <a href="history.html">الشهور السابقة</a>
+    <a href="import.html" class="active">استيراد نسخة قديمة</a>
+  </nav>
+</header>
+
+<main>
+  <div class="card">
+    <h3>استيراد ملف gm-marine-backup-....json</h3>
+    <div class="hint">
+      اختار الملف اللي كنت نزّلته زمان بزرار "تنزيل نسخة احتياطية" القديم.<br>
+      <b>بيانات الموظفين والمرتبات</b> هترفع مباشرة لـ Firebase (سحابة مشتركة بين كل الأجهزة).<br>
+      <b>باقي البيانات</b> (أنظمة العمل، الحضور، السلف، الإجازات...) هترجع لمتصفح الجهاز ده بس لحد ما نهاجرها هي كمان — يعني لو بتفتح من جهاز تاني، كررها هناك كمان بنفس الطريقة.
+    </div>
+    <div class="drop" id="dropZone">📄 دوس هنا لاختيار ملف النسخة الاحتياطية (.json)</div>
+    <input type="file" id="fileInput" accept=".json">
+    <div class="filename" id="fileName" style="display:none;"></div>
+    <button class="primary" id="importBtn" disabled>ابدأ الاستيراد</button>
+    <div class="log" id="log"></div>
+  </div>
+</main>
+
+<script>
+Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
+
+let parsedBackup = null;
+
+function logLine(msg, cls){
+  const log = document.getElementById('log');
+  log.style.display = 'block';
+  const line = document.createElement('div');
+  if(cls) line.className = cls;
+  line.textContent = msg;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+document.getElementById('dropZone').onclick = ()=> document.getElementById('fileInput').click();
+
+document.getElementById('fileInput').onchange = (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      parsedBackup = JSON.parse(ev.target.result);
+      if(!parsedBackup.data) throw new Error('الملف مش من نفس نوع النسخ الاحتياطي القديم (مفيش data)');
+      document.getElementById('fileName').style.display = 'block';
+      document.getElementById('fileName').textContent = '✔ ' + file.name + ' — جاهز للاستيراد';
+      document.getElementById('importBtn').disabled = false;
+    }catch(err){
+      alert('الملف ده مش صالح: ' + err.message);
+      parsedBackup = null;
+      document.getElementById('importBtn').disabled = true;
+    }
+  };
+  reader.readAsText(file);
+};
+
+document.getElementById('importBtn').onclick = async ()=>{
+  if(!parsedBackup) return;
+  const btn = document.getElementById('importBtn');
+  btn.disabled = true; btn.textContent = 'جاري الاستيراد...';
+  document.getElementById('log').innerHTML = '';
+
+  const data = parsedBackup.data;
+  const keys = Object.keys(data);
+  logLine('لاقيت ' + keys.length + ' مفتاح بيانات جوه الملف، بدأنا...');
+
+  for(const key of keys){
+    try{
+      const value = JSON.parse(data[key]);
+
+      if(key === 'gm_att_employees'){
+        const publicList = value.map(emp=>{
+          const copy = Object.assign({}, emp);
+          delete copy.baseSalary;
+          delete copy.dailyTransportAllowance;
+          return copy;
+        });
+        const moneyMap = {};
+        value.forEach(emp=>{
+          moneyMap[emp.id] = {
+            baseSalary: emp.baseSalary || 0,
+            dailyTransportAllowance: emp.dailyTransportAllowance || 0
+          };
+        });
+        await DB.dbSetJSON('gm_att_employees_public', publicList);
+        await DB.dbSetJSON('gm_att_employees_money', moneyMap);
+        logLine('✔ الموظفين (' + value.length + ') والمرتبات — اترفعوا على Firebase', 'ok');
+      } else {
+        localStorage.setItem(key, data[key]);
+        logLine('✔ ' + key + ' — رجع لمتصفح الجهاز ده', 'warn');
+      }
+    }catch(err){
+      logLine('✕ فشل استيراد ' + key + ': ' + err.message, 'err');
+    }
+  }
+
+  logLine('خلصنا. لو محتاج تشوف بيانات "أنظمة العمل / الحضور / السلف..." افتح صفحاتهم دلوقتي.', 'ok');
+  btn.textContent = 'تم الاستيراد';
+  Auth.finalizeAuthUI();
+};
+
+Auth.finalizeAuthUI();
+
+});
+</script>
+</body>
+</html>

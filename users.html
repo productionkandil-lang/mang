@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>المستخدمين — GM Marine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+  }
+  header{
+    padding:22px 32px; border-bottom:1px solid var(--border); background:var(--bg-raised);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{font-family:'Cairo',sans-serif; font-weight:800; font-size:22px; margin:0; color:var(--brass-bright);}
+  header .tag{color:var(--text-dim); font-size:13px; margin-top:4px;}
+  nav a{color:var(--text-dim); text-decoration:none; margin-inline-start:10px; font-size:12px; padding:6px 3px; border-bottom:2px solid transparent;}
+  nav a:hover{color:var(--brass-bright);}
+  nav a.active{color:var(--brass-bright); border-color:var(--brass);}
+  main{max-width:900px; margin:0 auto; padding:28px 24px 80px;}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px; margin-bottom:20px; position:relative;}
+  .card::before, .card::after{content:''; position:absolute; width:5px; height:5px; border-radius:50%; background:var(--brass); opacity:.5;}
+  .card::before{top:10px; right:10px;} .card::after{bottom:10px; left:10px;}
+  .card h3{font-family:'Cairo',sans-serif; font-size:15px; margin:0 0 16px; color:var(--brass-bright); padding-bottom:10px; border-bottom:1px solid var(--border);}
+  .hint{font-size:12px; color:var(--text-dim); margin-bottom:16px; line-height:1.8;}
+
+  .form-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; align-items:end;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
+  .field input, .field select{
+    width:100%; background:var(--bg-raised); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); padding:9px 11px; font-family:'IBM Plex Mono',monospace; font-size:13px;
+  }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--brass);}
+  button{
+    font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); padding:9px 16px; font-size:13px; font-weight:500;
+  }
+  button:hover{border-color:var(--brass);}
+  button:disabled{opacity:.6; cursor:not-allowed;}
+  button.primary{background:var(--brass); border-color:var(--brass); color:#1a1410; font-weight:700;}
+  button.primary:hover{background:var(--brass-bright);}
+
+  .table-wrap{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
+  table{width:100%; border-collapse:collapse; background:var(--surface);}
+  thead th{background:var(--surface-2); text-align:right; padding:11px 12px; font-size:11.5px; color:var(--text-dim); font-weight:700; border-bottom:1px solid var(--border); white-space:nowrap;}
+  tbody td{padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  td.mono{font-family:'IBM Plex Mono',monospace;}
+  .role-badge{
+    display:inline-block; padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:700;
+    background:rgba(200,137,79,.12); color:var(--brass-bright); border:1px solid rgba(200,137,79,.3);
+  }
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:var(--surface-2); border:1px solid var(--brass); color:var(--text); padding:12px 22px;
+    border-radius:10px; font-size:13.5px; transition:.25s; pointer-events:none; z-index:50;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .error{
+    background:rgba(193,91,79,.12); border:1px solid var(--danger); color:#f0a99f; font-size:12.5px;
+    padding:10px 12px; border-radius:8px; margin-bottom:16px; display:none;
+  }
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
+
+<header>
+  <div>
+    <h1>GM Marine — المستخدمين</h1>
+    <div class="tag">إدارة حسابات الدخول والصلاحيات (أدمن فقط)</div>
+  </div>
+  <nav>
+    <a href="index.html">الرئيسية</a>
+    <a href="employees.html">الموظفين</a>
+    <a href="systems.html">أنظمة العمل</a>
+    <a href="upload.html">رفع الملف</a>
+    <a href="records.html">بيانات الشهر</a>
+    <a href="advances.html">السلف والخصومات</a>
+    <a href="holidays.html">الإجازات الرسمية</a>
+    <a href="schedule.html">مواعيد تاريخية</a>
+    <a href="van.html">عربية الوردية</a>
+    <a href="closing.html">تقفيل الشهر</a>
+    <a href="history.html">الشهور السابقة</a>
+    <a href="users.html" class="active">المستخدمين</a>
+  </nav>
+</header>
+
+<main>
+  <div class="card">
+    <h3>إضافة مستخدم جديد</h3>
+    <div class="hint">
+      لازم بريد إلكتروني حقيقي لكل شخص (عشان يقدر يستخدم "نسيت الباسورد" بنفسه لاحقًا).<br>
+      <b>مدخل بيانات:</b> يسجل الحضور، يعدل بيانات الشهر، يرفع ملف البصمة، ويعدل أنظمة العمل — بدون رؤية أي مرتبات.<br>
+      <b>مطّلع على الفلوس:</b> يشوف المرتبات ويعدل في السلف والخصومات وعربية الوردية وتقفيل الشهر — بدون تعديل أنظمة العمل.<br>
+      <b>مدير النظام:</b> صلاحية كاملة على كل الصفحات.
+    </div>
+    <div class="error" id="errBox"></div>
+    <div class="form-grid">
+      <div class="field">
+        <label>اسم العرض</label>
+        <input type="text" id="nameInput" placeholder="مثلاً: أحمد">
+      </div>
+      <div class="field">
+        <label>البريد الإلكتروني</label>
+        <input type="email" id="emailInput" placeholder="name@example.com">
+      </div>
+      <div class="field">
+        <label>باسورد مبدئي</label>
+        <input type="text" id="passInput" placeholder="6 أحرف على الأقل">
+      </div>
+      <div class="field">
+        <label>الدور</label>
+        <select id="roleInput">
+          <option value="data_entry">مدخل بيانات</option>
+          <option value="finance">مطّلع على الفلوس</option>
+          <option value="admin">مدير النظام</option>
+        </select>
+      </div>
+      <div class="field">
+        <button class="primary" id="addBtn" style="width:100%;">إضافة</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>اسم العرض</th><th>البريد الإلكتروني</th><th>الدور</th></tr>
+      </thead>
+      <tbody id="usersBody"></tbody>
+    </table>
+  </div>
+</main>
+
+<div class="toast" id="toast">تم الحفظ</div>
+
+<script>
+Auth.guardPage(Auth.pageKeyFromLocation()).then(function(){
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function showError(msg){
+  const box = document.getElementById('errBox');
+  box.textContent = msg; box.style.display = 'block';
+}
+
+async function renderUsers(){
+  const body = document.getElementById('usersBody');
+  body.innerHTML = '<tr><td colspan="3">جاري التحميل...</td></tr>';
+  try{
+    const snap = await firebase.firestore().collection('users').get();
+    body.innerHTML = '';
+    snap.forEach(doc=>{
+      const u = doc.data();
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${u.name || '—'}</td>
+        <td class="mono">${u.email || '—'}</td>
+        <td><span class="role-badge">${Auth.ROLE_LABELS[u.role] || u.role}</span></td>
+      `;
+      body.appendChild(tr);
+    });
+    if(snap.empty) body.innerHTML = '<tr><td colspan="3">مفيش مستخدمين لسه</td></tr>';
+  }catch(err){
+    body.innerHTML = '<tr><td colspan="3">تعذر تحميل القائمة: '+err.message+'</td></tr>';
+  }
+}
+
+document.getElementById('addBtn').onclick = async ()=>{
+  const name = document.getElementById('nameInput').value.trim();
+  const email = document.getElementById('emailInput').value.trim();
+  const password = document.getElementById('passInput').value;
+  const role = document.getElementById('roleInput').value;
+  document.getElementById('errBox').style.display = 'none';
+
+  if(!email || !password){ showError('اكتب البريد الإلكتروني والباسورد'); return; }
+  if(password.length < 6){ showError('الباسورد لازم يكون 6 أحرف على الأقل'); return; }
+
+  const btn = document.getElementById('addBtn');
+  btn.disabled = true; btn.textContent = 'جاري الإضافة...';
+
+  /* بنستخدم تطبيق Firebase ثانوي مؤقت عشان إنشاء الحساب الجديد
+     ميعملش تسجيل خروج للأدمن اللي بيضيفه دلوقتي */
+  const secondaryApp = firebase.initializeApp(firebase.app().options, 'Secondary-' + Date.now());
+  try{
+    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
+    const uid = cred.user.uid;
+    await firebase.firestore().collection('users').doc(uid).set({ name, email, role });
+    await secondaryApp.auth().signOut();
+    toast('تم إضافة المستخدم');
+    document.getElementById('nameInput').value = '';
+    document.getElementById('emailInput').value = '';
+    document.getElementById('passInput').value = '';
+    renderUsers();
+  }catch(err){
+    if(err.code === 'auth/email-already-in-use') showError('البريد ده مستخدم بالفعل');
+    else showError('حصل خطأ: ' + err.message);
+  }finally{
+    await secondaryApp.delete();
+    btn.disabled = false; btn.textContent = 'إضافة';
+  }
+};
+
+renderUsers();
+Auth.finalizeAuthUI();
+
+});
+</script>
+</body>
+</html>

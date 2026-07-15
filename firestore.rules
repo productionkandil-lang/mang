@@ -1,0 +1,56 @@
+/* ============================================================
+   قواعد حماية Firestore — دي بتتنفذ على سيرفرات جوجل نفسها،
+   مش في متصفح المستخدم، فمحدش يقدر يتخطاها حتى لو فاهم في الكود.
+
+   طريقة التنصيب:
+   Firebase Console → Firestore Database → تبويب Rules
+   → امسح اللي موجود → الصق الكود ده كامل → Publish
+   ============================================================ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isAdmin()     { return isSignedIn() && myRole() == 'admin'; }
+    function isFinance()   { return isSignedIn() && myRole() == 'finance'; }
+    function isDataEntry() { return isSignedIn() && myRole() == 'data_entry'; }
+
+    /* بروفايل كل مستخدم (اسمه ودوره) */
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    /* بيانات التطبيق نفسها — مفتاح لكل نوع بيانات، بنفس أسماء المفاتيح القديمة */
+    match /kv_store/{key} {
+
+      allow read: if isAdmin()
+        || (isDataEntry() && key in [
+              'gm_att_employees_public','gm_att_systems','gm_att_raw','gm_att_processed',
+              'gm_att_report_cols','gm_att_holidays','gm_att_schedule_overrides'
+            ])
+        || (isFinance() && key in [
+              'gm_att_employees_public','gm_att_employees_money','gm_att_systems',
+              'gm_att_advances','gm_att_van_settings','gm_att_van_log','gm_att_archive'
+            ]);
+
+      allow write: if isAdmin()
+        || (isDataEntry() && key in [
+              'gm_att_employees_public','gm_att_systems','gm_att_raw','gm_att_processed',
+              'gm_att_report_cols','gm_att_holidays','gm_att_schedule_overrides'
+            ])
+        || (isFinance() && key == 'gm_att_advances');
+    }
+  }
+}
+
+/* ملحوظة: بيانات المرتب الأساسي وبدل المواصلات متخزنة في مفتاح منفصل
+   خالص (gm_att_employees_money) — مدخل البيانات معندوش صلاحية قراءة
+   ليه أصلًا من عند السيرفر، مش بس مخفي بالتصميم. ده الفرق الحقيقي عن
+   النسخة اللي كانت شغالة على المتصفح بس. */

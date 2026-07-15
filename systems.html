@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>أنظمة العمل — GM Marine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+    background-color:var(--bg);
+  }
+  body::before{
+    content:''; position:fixed; inset:0; background:var(--bg); opacity:.94; z-index:-1;
+  }
+  header{
+    padding:22px 32px; border-bottom:1px solid var(--border); background:var(--bg-raised);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{
+    font-family:'Cairo',sans-serif; font-weight:800; font-size:22px; margin:0;
+    color:var(--brass-bright); letter-spacing:.3px;
+  }
+  header .tag{color:var(--text-dim); font-size:13px; margin-top:4px;}
+  nav a{color:var(--text-dim); text-decoration:none; margin-inline-start:10px; font-size:12px; padding:6px 3px; border-bottom:2px solid transparent;}
+  nav a:hover{color:var(--brass-bright);}
+  nav a.active{color:var(--brass-bright); border-color:var(--brass);}
+  main{max-width:1180px; margin:0 auto; padding:28px 24px 80px;}
+  .toolbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:12px; flex-wrap:wrap;}
+  .toolbar h2{font-family:'Cairo',sans-serif; font-size:19px; margin:0; font-weight:700;}
+  .toolbar p{color:var(--text-dim); font-size:13px; margin:4px 0 0;}
+  button{
+    font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); padding:10px 16px; font-size:14px; font-weight:500;
+    transition:.15s;
+  }
+  button:hover{border-color:var(--brass);}
+  button.primary{background:var(--brass); border-color:var(--brass); color:#1a1410; font-weight:700;}
+  button.primary:hover{background:var(--brass-bright);}
+  button.ghost{background:transparent;}
+  button.danger-ghost{background:transparent; color:var(--danger); border-color:transparent;}
+  button.danger-ghost:hover{border-color:var(--danger); background:rgba(193,91,79,.08);}
+  .tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px;}
+  .tab{
+    position:relative; padding:10px 18px 10px 34px; border-radius:10px; border:1px solid var(--border);
+    background:var(--surface); cursor:pointer; font-weight:700; font-family:'Cairo',sans-serif; font-size:14px;
+  }
+  .tab.active{border-color:var(--brass); background:var(--surface-2); color:var(--brass-bright);}
+  .tab .dot{position:absolute; right:14px; top:50%; transform:translateY(-50%); width:6px; height:6px; border-radius:50%; background:var(--brass); opacity:.15;}
+  .tab.active .dot{opacity:1;}
+  .tab-add{padding:10px 16px; border-style:dashed; color:var(--text-dim);}
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px;
+    position:relative; margin-bottom:20px;
+  }
+  .card::before, .card::after{
+    content:''; position:absolute; width:5px; height:5px; border-radius:50%; background:var(--brass); opacity:.5;
+  }
+  .card::before{top:10px; right:10px;} .card::after{bottom:10px; left:10px;}
+  .card h3{
+    font-family:'Cairo',sans-serif; font-size:15px; margin:0 0 16px; color:var(--brass-bright);
+    display:flex; align-items:center; gap:8px; padding-bottom:12px; border-bottom:1px solid var(--border);
+  }
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:16px;}
+  .field label{display:block; font-size:12.5px; color:var(--text-dim); margin-bottom:6px;}
+  .field input[type=text], .field input[type=number], .field input[type=time], .field select{
+    width:100%; background:var(--bg-raised); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); padding:9px 11px; font-family:'IBM Plex Mono',monospace; font-size:13.5px;
+  }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--brass);}
+  .field .hint{font-size:11.5px; color:var(--text-dim); margin-top:5px; line-height:1.5;}
+  .switch-row{display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:var(--bg-raised); border:1px solid var(--border); border-radius:10px; padding:12px 14px;}
+  .switch-row .label{font-size:13.5px; font-weight:500;}
+  .switch-row .sub{font-size:11.5px; color:var(--text-dim); margin-top:2px;}
+  .switch{position:relative; width:42px; height:24px; flex:none;}
+  .switch input{opacity:0; width:0; height:0;}
+  .switch .slider{position:absolute; inset:0; background:var(--surface-2); border:1px solid var(--border); border-radius:24px; cursor:pointer; transition:.15s;}
+  .switch .slider::before{content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:var(--text-dim); border-radius:50%; transition:.15s;}
+  .switch input:checked + .slider{background:rgba(200,137,79,.25); border-color:var(--brass);}
+  .switch input:checked + .slider::before{transform:translateX(20px); background:var(--brass-bright);}
+  .depend{opacity:.4; pointer-events:none; filter:grayscale(.4);}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;}
+  .days{display:flex; gap:6px; flex-wrap:wrap;}
+  .daybtn{padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg-raised); color:var(--text-dim); font-size:12.5px; cursor:pointer;}
+  .daybtn.on{background:var(--brass); border-color:var(--brass); color:#1a1410; font-weight:700;}
+  .tiers{display:flex; flex-direction:column; gap:10px;}
+  .tier-row{display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:10px; align-items:end; background:var(--bg-raised); padding:12px; border-radius:10px; border:1px solid var(--border);}
+  .tier-row .field label{margin-bottom:4px;}
+  .small-x{background:transparent; border:none; color:var(--danger); font-size:16px; padding:4px 8px; cursor:pointer;}
+  .add-tier{align-self:flex-start; font-size:12.5px; padding:7px 12px;}
+  .allow-row{display:grid; grid-template-columns:1fr 140px auto; gap:10px; align-items:end; margin-bottom:10px;}
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:var(--surface-2); border:1px solid var(--brass); color:var(--text); padding:12px 22px;
+    border-radius:10px; font-size:13.5px; transition:.25s; pointer-events:none; z-index:50;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .footer-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:24px;}
+  .name-input{
+    font-family:'Cairo',sans-serif; font-weight:800; font-size:20px; background:transparent; border:none;
+    color:var(--text); border-bottom:2px dashed var(--border); padding:4px 2px; width:280px; margin-bottom:4px;
+  }
+  .name-input:focus{outline:none; border-color:var(--brass);}
+  .empty{text-align:center; padding:60px 20px; color:var(--text-dim);}
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
+<header>
+  <div>
+    <h1>GM Marine — أنظمة العمل</h1>
+    <div class="tag">إعدادات مواعيد العمل، الأوفرتايم، السماحية، والخصومات لكل نظام</div>
+  </div>
+  <nav>
+    <a href="index.html">الرئيسية</a>
+    <a href="employees.html">الموظفين</a>
+    <a href="systems.html" class="active">أنظمة العمل</a>
+    <a href="upload.html">رفع الملف</a>
+    <a href="records.html">بيانات الشهر</a>
+    <a href="advances.html">السلف والخصومات</a>
+    <a href="holidays.html">الإجازات الرسمية</a>
+    <a href="schedule.html">مواعيد تاريخية</a>
+    <a href="van.html">عربية الوردية</a>
+    <a href="closing.html">تقفيل الشهر</a>
+    <a href="history.html">الشهور السابقة</a>
+  </nav>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div>
+      <h2>الأنظمة</h2>
+      <p>كل نظام له مواعيده وقواعده الخاصة — يتم تطبيقها على كل موظف تابع له عند تقفيل الشهر</p>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="systemEditor"></div>
+</main>
+
+<div class="toast" id="toast">تم الحفظ</div>
+
+<script>
+Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
+
+const STORAGE_KEY = 'gm_att_systems';
+
+function defaultSystem(id, name){
+  return {
+    id, name,
+    officialStartTime: '07:30',
+    weeklyOffDays: [5],
+    restDayMode: 'weekly',
+    monthlyRestDays: 4,
+    monthlyRequiredHours: 281,
+
+    grace: { enabled:true, minutes:10, isMaster:false },
+
+    overtime: { baseHours: 8, rate1MaxHours: 1.5, rate1: 1, rate2: 1.5 },
+
+    fridayRule: {
+      enabled: true,
+      multiplier: 1.5,
+      tiers: [
+        { maxHours: 2, deductHours: 0 },
+        { maxHours: 5, deductHours: 1 },
+        { maxHours: 999, deductHours: 2 }
+      ],
+      noShowHours: 8
+    },
+
+    deductions: { enabled:false, absentDivisor:30 },
+
+    absenceDeduction: {
+      enabled: false,
+      tiers: [
+        { maxDays: 1, mode: 'none' },
+        { maxDays: 2, mode: 'fixed', value: 1 },
+        { maxDays: 5, mode: 'exact' },
+        { maxDays: 11, mode: 'exactPlus', value: 1 }
+      ],
+      beyondMode: 'presentOnly'
+    },
+
+    allowances: [ { name:'بدل مواصلات', amount:0, linkedToAttendance:true } ]
+  };
+}
+
+function loadSystems(){
+  let s = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+  if(!s || !s.length){
+    s = [ defaultSystem(1,'نظام 1'), defaultSystem(2,'نظام 2'), defaultSystem(3,'نظام 3') ];
+    s[0].grace.isMaster = true;
+    s[2].fridayRule.enabled = false;
+    saveSystems(s);
+  }
+  // migrate old records missing newer fields
+  let migrated = false;
+  s.forEach(sys=>{
+    if(!sys.weeklyOffDays){
+      sys.weeklyOffDays = sys.weeklyOffDay!=null ? [sys.weeklyOffDay] : [5];
+      migrated = true;
+    }
+    if(!sys.restDayMode){ sys.restDayMode = 'weekly'; migrated = true; }
+    if(sys.monthlyRestDays==null){ sys.monthlyRestDays = 4; migrated = true; }
+    if(sys.overtime && sys.overtime.baseHours==null && sys.overtime.thresholdHours!=null){
+      sys.overtime.baseHours = Math.max(0, sys.overtime.thresholdHours - (sys.overtime.rate1MaxHours||1.5));
+      migrated = true;
+    }
+    if(!sys.absenceDeduction){
+      sys.absenceDeduction = {
+        enabled:false,
+        tiers:[
+          { maxDays:1, mode:'none' },
+          { maxDays:2, mode:'fixed', value:1 },
+          { maxDays:5, mode:'exact' },
+          { maxDays:11, mode:'exactPlus', value:1 }
+        ],
+        beyondMode:'presentOnly'
+      };
+      migrated = true;
+    }
+  });
+  if(migrated) saveSystems(s);
+  return s;
+}
+function saveSystems(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+
+let systems = loadSystems();
+let activeId = systems[0]?.id;
+
+const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function renderTabs(){
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  systems.forEach(s=>{
+    const el = document.createElement('div');
+    el.className = 'tab' + (s.id===activeId ? ' active':'');
+    el.innerHTML = '<span class="dot"></span>' + s.name;
+    el.onclick = ()=>{ activeId = s.id; render(); };
+    tabs.appendChild(el);
+  });
+  const add = document.createElement('div');
+  add.className = 'tab tab-add';
+  add.textContent = '+ نظام جديد';
+  add.onclick = ()=>{
+    const newId = Math.max(0,...systems.map(s=>s.id)) + 1;
+    const ns = defaultSystem(newId, 'نظام '+newId);
+    systems.push(ns); activeId = newId; saveSystems(systems); render();
+    toast('تم إضافة النظام');
+  };
+  tabs.appendChild(add);
+}
+
+function renderEditor(){
+  const wrap = document.getElementById('systemEditor');
+  const sys = systems.find(s=>s.id===activeId);
+  if(!sys){ wrap.innerHTML = '<div class="empty">مفيش أنظمة بعد — ضيف نظام جديد</div>'; return; }
+
+  wrap.innerHTML = `
+    <input class="name-input" id="sysName" value="${sys.name}">
+    <div style="color:var(--text-dim); font-size:12.5px; margin-bottom:20px;">معرّف النظام: ${sys.id}</div>
+
+    <div class="card">
+      <h3>مواعيد العمل الأساسية</h3>
+      <div class="row3">
+        <div class="field">
+          <label>ميعاد الحضور الرسمي</label>
+          <input type="time" id="officialStartTime" value="${sys.officialStartTime}">
+        </div>
+        <div class="field">
+          <label>عدد الساعات المطلوبة شهريًا (لحساب سعر الساعة)</label>
+          <input type="number" id="monthlyRequiredHours" value="${sys.monthlyRequiredHours}" step="0.01">
+          <div class="hint">المرتب الأساسي ÷ الرقم ده = سعر الساعة</div>
+        </div>
+        <div class="field">
+          <label>نوع الإجازة</label>
+          <select id="restDayMode">
+            <option value="weekly" ${sys.restDayMode!=='monthly'?'selected':''}>أسبوعية (يوم/أيام ثابتة كل أسبوع)</option>
+            <option value="monthly" ${sys.restDayMode==='monthly'?'selected':''}>شهرية (عدد أيام بالشهر، مش مرتبطة بيوم معين)</option>
+          </select>
+        </div>
+        <div class="field" id="weeklyOffField" style="${sys.restDayMode==='monthly'?'display:none;':''}">
+          <label>أيام الإجازة الأسبوعية (تقدر تختار أكتر من يوم)</label>
+          <div class="days" id="weeklyOffDay">
+            ${dayNames.map((d,i)=>`<div class="daybtn ${sys.weeklyOffDays.includes(i)?'on':''}" data-i="${i}">${d}</div>`).join('')}
+          </div>
+        </div>
+        <div class="field" id="monthlyOffField" style="${sys.restDayMode==='monthly'?'':'display:none;'}">
+          <label>عدد أيام الإجازة في الشهر</label>
+          <input type="number" id="monthlyRestDays" value="${sys.monthlyRestDays}" min="0">
+          <div class="hint">أول ${sys.monthlyRestDays} يوم غياب في الشهر بيتحسبوا زي الإجازة (بدون خصم)، وأي غياب زيادة عنهم بيتخصم عادي</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>السماحية الديناميكية</h3>
+      <div class="switch-row" style="margin-bottom:16px;">
+        <div>
+          <div class="label">تفعيل السماحية الديناميكية</div>
+          <div class="sub">أول بصمة حضور في المجموعة + عدد الدقائق = ميعاد الحضور الرسمي لليوم</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="graceEnabled" ${sys.grace.enabled?'checked':''}>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="row2 ${sys.grace.enabled?'':'depend'}" id="graceFields">
+        <div class="field">
+          <label>عدد دقائق السماحية</label>
+          <input type="number" id="graceMinutes" value="${sys.grace.minutes}">
+        </div>
+        <div class="field">
+          <label>هل هذا النظام هو "مرجع" فتح المصنع؟</label>
+          <select id="graceMaster">
+            <option value="false" ${!sys.grace.isMaster?'selected':''}>لا — يعتمد على ميعاده هو بس</option>
+            <option value="true" ${sys.grace.isMaster?'selected':''}>نعم — بصماته تحدد ميعاد كل الأنظمة الأخرى</option>
+          </select>
+          <div class="hint">النظام المرجعي لو حد منه حضر داخل فترة السماحية، بيتعدل ميعاد حضور باقي الأنظمة كلها للميعاد الرسمي. لو مفيش حد من النظام المرجعي حضر في الفترة، باقي الأنظمة تاخد وقتها الفعلي.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>الأوفرتايم — أيام الأسبوع العادية</h3>
+      <div class="row3">
+        <div class="field">
+          <label>ساعات يوم العمل الأساسي (داخل المرتب)</label>
+          <input type="number" id="otBase" value="${sys.overtime.baseHours}" step="0.25">
+          <div class="hint">مفيش أوفرتايم خلال الساعات دي، محسوبة أصلاً في المرتب</div>
+        </div>
+        <div class="field">
+          <label>مدة شريحة الساعة بساعة بعد الأساسي (ساعة)</label>
+          <input type="number" id="otRate1Max" value="${sys.overtime.rate1MaxHours}" step="0.25">
+        </div>
+        <div class="field">
+          <label>معدل هذه الشريحة (×)</label>
+          <input type="number" id="otRate1" value="${sys.overtime.rate1}" step="0.1">
+        </div>
+      </div>
+      <div class="row3" style="margin-top:16px;">
+        <div class="field">
+          <label>إجمالي ساعات الحضور المطلوبة قبل الأوفرتايم ×1.5</label>
+          <div style="font-family:'IBM Plex Mono',monospace; padding:9px 0; color:var(--brass-bright); font-weight:600;" id="otComputedThreshold">
+            ${(sys.overtime.baseHours + sys.overtime.rate1MaxHours).toFixed(2)} ساعة
+          </div>
+        </div>
+        <div class="field">
+          <label>معدل الأوفرتايم بعد كده — محسوب بالدقيقة (×)</label>
+          <input type="number" id="otRate2" value="${sys.overtime.rate2}" step="0.1">
+          <div class="hint">مثلاً 1.5 = ساعة ونص، بيتحسب بدقة الدقيقة مش الساعة الكاملة</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>قاعدة يوم الإجازة (الجمعة)</h3>
+      <div class="switch-row" style="margin-bottom:16px;">
+        <div>
+          <div class="label">تفعيل معادلة الخصم المتدرج</div>
+          <div class="sub">لو متفعلة، أي ساعات حضور يوم الإجازة بتتحسب بالمعادلة المتدرجة تحت. لو متلغية، بيتحسب يوم كامل ثابت بدون حضور فعلي.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="fridayEnabled" ${sys.fridayRule.enabled?'checked':''}>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="${sys.fridayRule.enabled?'':'depend'}" id="fridayFields">
+        <div class="field" style="max-width:200px; margin-bottom:16px;">
+          <label>معامل الضرب على الساعات المتبقية بعد الخصم</label>
+          <input type="number" id="fridayMultiplier" value="${sys.fridayRule.multiplier}" step="0.1">
+        </div>
+        <div class="tiers" id="fridayTiers"></div>
+        <button class="ghost add-tier" id="addTier">+ إضافة شريحة</button>
+      </div>
+
+      <div class="field" style="max-width:260px; margin-top:16px;">
+        <label>عدد الساعات المحتسبة لو لم يحضر أصلًا يوم الإجازة</label>
+        <input type="number" id="fridayNoShow" value="${sys.fridayRule.noShowHours}" step="0.5">
+        <div class="hint">بيتحسب كيوم إجازة عادي، بدون أي خصم من المرتب</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>الخصومات (تأخير / انصراف مبكر / غياب)</h3>
+      <div class="switch-row" style="margin-bottom:16px;">
+        <div>
+          <div class="label">تفعيل نظام الخصومات</div>
+          <div class="sub">لو متلغية، هيتم تسجيل التأخير والانصراف المبكر في التقرير بدون خصم فعلي من المرتب. (خصم الغياب له مفتاح منفصل تحت — كارت "معادلة خصم الغياب المتدرجة")</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="dedEnabled" ${sys.deductions.enabled?'checked':''}>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="row2 ${sys.deductions.enabled?'':'depend'}">
+        <div class="field">
+          <label>خصم الغياب</label>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text-dim); padding:9px 0;">
+            المرتب الأساسي ÷ ${sys.deductions.absentDivisor} لكل يوم غياب
+          </div>
+        </div>
+        <div class="field">
+          <label>خصم التأخير والانصراف المبكر</label>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text-dim); padding:9px 0;">
+            دقيقة بدقيقة، حسب سعر الساعة ÷ 60
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>معادلة خصم الغياب المتدرجة</h3>
+      <div class="switch-row" style="margin-bottom:16px;">
+        <div>
+          <div class="label">تفعيل خصم الغياب (بمعادلة متدرجة حسب عدد الأيام)</div>
+          <div class="sub">لو متلغية، بيتطبق الخصم البسيط (المرتب ÷ ${sys.deductions.absentDivisor} لكل يوم) بدل المعادلة دي</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="absDedEnabled" ${sys.absenceDeduction.enabled?'checked':''}>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="${sys.absenceDeduction.enabled?'':'depend'}" id="absDedFields">
+        <div class="tiers" id="absenceTiers"></div>
+        <button class="ghost add-tier" id="addAbsTier">+ إضافة شريحة</button>
+        <div class="field" style="max-width:320px; margin-top:18px;">
+          <label>بعد آخر شريحة (أكتر من الحد الأقصى)</label>
+          <select id="absBeyondMode">
+            <option value="presentOnly" ${sys.absenceDeduction.beyondMode==='presentOnly'?'selected':''}>يُحاسب بعدد أيام الحضور فقط</option>
+            <option value="continue" ${sys.absenceDeduction.beyondMode==='continue'?'selected':''}>الاستمرار بنفس معادلة آخر شريحة</option>
+          </select>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <div class="hint">⚠ المعادلة دي مش بتتطبق تلقائيًا في شهر بداية أو نهاية عمل الموظف (لو محدد تاريخ بداية/نهاية في صفحة الموظفين) — بيتطبق بدلها الخصم البسيط المتناسب مع أيام الشهر الفعلية اللي اشتغلها.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>البدلات (مرتبطة بالحضور)</h3>
+      <div id="allowRows"></div>
+      <button class="ghost" id="addAllowance" style="font-size:12.5px; padding:8px 14px;">+ إضافة بدل</button>
+    </div>
+
+    <div class="footer-actions">
+      <button class="danger-ghost" id="deleteSystem">حذف هذا النظام</button>
+      <button class="primary" id="saveBtn">حفظ التعديلات</button>
+    </div>
+  `;
+
+  document.getElementById('sysName').oninput = e=>{ sys.name = e.target.value; renderTabs(); };
+  document.getElementById('officialStartTime').oninput = e=> sys.officialStartTime = e.target.value;
+  document.getElementById('monthlyRequiredHours').oninput = e=> sys.monthlyRequiredHours = parseFloat(e.target.value)||0;
+  document.getElementById('restDayMode').onchange = e=>{ sys.restDayMode = e.target.value; renderEditor(); };
+  document.getElementById('monthlyRestDays').oninput = e=> sys.monthlyRestDays = parseInt(e.target.value)||0;
+  document.querySelectorAll('#weeklyOffDay .daybtn').forEach(b=>{
+    b.onclick = ()=>{
+      const i = parseInt(b.dataset.i);
+      const idx = sys.weeklyOffDays.indexOf(i);
+      if(idx>-1){
+        if(sys.weeklyOffDays.length>1) sys.weeklyOffDays.splice(idx,1);
+      } else {
+        sys.weeklyOffDays.push(i);
+      }
+      renderEditor();
+    };
+  });
+
+  document.getElementById('graceEnabled').onchange = e=>{ sys.grace.enabled = e.target.checked; renderEditor(); };
+  document.getElementById('graceMinutes').oninput = e=> sys.grace.minutes = parseInt(e.target.value)||0;
+  document.getElementById('graceMaster').onchange = e=> sys.grace.isMaster = (e.target.value==='true');
+
+  document.getElementById('otBase').oninput = e=>{ sys.overtime.baseHours = parseFloat(e.target.value)||0; updateOtThresholdDisplay(sys); };
+  document.getElementById('otRate1Max').oninput = e=>{ sys.overtime.rate1MaxHours = parseFloat(e.target.value)||0; updateOtThresholdDisplay(sys); };
+  document.getElementById('otRate1').oninput = e=> sys.overtime.rate1 = parseFloat(e.target.value)||0;
+  document.getElementById('otRate2').oninput = e=> sys.overtime.rate2 = parseFloat(e.target.value)||0;
+
+  document.getElementById('fridayEnabled').onchange = e=>{ sys.fridayRule.enabled = e.target.checked; renderEditor(); };
+  document.getElementById('fridayMultiplier').oninput = e=> sys.fridayRule.multiplier = parseFloat(e.target.value)||0;
+  document.getElementById('fridayNoShow').oninput = e=> sys.fridayRule.noShowHours = parseFloat(e.target.value)||0;
+
+  renderTiers(sys);
+  document.getElementById('addTier').onclick = ()=>{
+    sys.fridayRule.tiers.push({ maxHours: 999, deductHours: 0 });
+    renderTiers(sys);
+  };
+
+  document.getElementById('absDedEnabled').onchange = e=>{ sys.absenceDeduction.enabled = e.target.checked; renderEditor(); };
+  document.getElementById('absBeyondMode').onchange = e=> sys.absenceDeduction.beyondMode = e.target.value;
+  renderAbsenceTiers(sys);
+  document.getElementById('addAbsTier').onclick = ()=>{
+    sys.absenceDeduction.tiers.push({ maxDays: 99, mode:'exact' });
+    renderAbsenceTiers(sys);
+  };
+
+  renderAllowances(sys);
+  document.getElementById('addAllowance').onclick = ()=>{
+    sys.allowances.push({ name:'بدل جديد', amount:0, linkedToAttendance:true });
+    renderAllowances(sys);
+  };
+
+  document.getElementById('deleteSystem').onclick = ()=>{
+    if(!confirm('متأكد من حذف "'+sys.name+'"؟ الموظفين التابعين له هيفضلوا محتاجين إعادة تعيين نظام.')) return;
+    systems = systems.filter(s=>s.id!==sys.id);
+    activeId = systems[0]?.id;
+    saveSystems(systems);
+    render();
+    toast('تم الحذف');
+  };
+
+  document.getElementById('saveBtn').onclick = ()=>{
+    saveSystems(systems);
+    toast('تم حفظ إعدادات ' + sys.name);
+  };
+}
+
+function updateOtThresholdDisplay(sys){
+  const el = document.getElementById('otComputedThreshold');
+  if(el) el.textContent = (sys.overtime.baseHours + sys.overtime.rate1MaxHours).toFixed(2) + ' ساعة';
+}
+
+function renderAbsenceTiers(sys){
+  const box = document.getElementById('absenceTiers');
+  if(!box) return;
+  box.innerHTML = '';
+  const modeLabels = { none:'بدون خصم', fixed:'عدد أيام ثابت', exact:'بعدد أيام الغياب بالظبط', exactPlus:'بعدد أيام الغياب + إضافة' };
+  sys.absenceDeduction.tiers.forEach((t,idx)=>{
+    const row = document.createElement('div');
+    row.className = 'tier-row';
+    const prevMax = idx===0 ? 0 : sys.absenceDeduction.tiers[idx-1].maxDays;
+    const needsValue = t.mode==='fixed' || t.mode==='exactPlus';
+    row.innerHTML = `
+      <div class="field">
+        <label>من (يوم)</label>
+        <div style="font-family:'IBM Plex Mono',monospace; padding:9px 0; color:var(--text-dim);">${prevMax+1}</div>
+      </div>
+      <div class="field">
+        <label>لغاية (يوم)</label>
+        <input type="number" step="1" value="${t.maxDays}" data-idx="${idx}" class="absTierMax">
+      </div>
+      <div class="field">
+        <label>نوع الخصم</label>
+        <select data-idx="${idx}" class="absTierMode">
+          ${Object.entries(modeLabels).map(([k,l])=>`<option value="${k}" ${t.mode===k?'selected':''}>${l}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field" style="${needsValue?'':'visibility:hidden;'}">
+        <label>${t.mode==='fixed' ? 'عدد الأيام المخصومة' : 'أيام إضافية'}</label>
+        <input type="number" step="1" value="${t.value||0}" data-idx="${idx}" class="absTierValue">
+      </div>
+      <button class="small-x" data-idx="${idx}">✕</button>
+    `;
+    box.appendChild(row);
+  });
+  box.querySelectorAll('.absTierMax').forEach(inp=>{
+    inp.onchange = e=>{ sys.absenceDeduction.tiers[e.target.dataset.idx].maxDays = parseInt(e.target.value)||0; renderAbsenceTiers(sys); };
+  });
+  box.querySelectorAll('.absTierMode').forEach(sel=>{
+    sel.onchange = e=>{ sys.absenceDeduction.tiers[e.target.dataset.idx].mode = e.target.value; renderAbsenceTiers(sys); };
+  });
+  box.querySelectorAll('.absTierValue').forEach(inp=>{
+    inp.oninput = e=>{ sys.absenceDeduction.tiers[e.target.dataset.idx].value = parseInt(e.target.value)||0; };
+  });
+  box.querySelectorAll('.small-x').forEach(btn=>{
+    btn.onclick = e=>{
+      sys.absenceDeduction.tiers.splice(e.target.dataset.idx,1);
+      renderAbsenceTiers(sys);
+    };
+  });
+}
+
+function renderTiers(sys){
+  const box = document.getElementById('fridayTiers');
+  if(!box) return;
+  box.innerHTML = '';
+  sys.fridayRule.tiers.forEach((t,idx)=>{
+    const row = document.createElement('div');
+    row.className = 'tier-row';
+    const prevMax = idx===0 ? 0 : sys.fridayRule.tiers[idx-1].maxHours;
+    row.innerHTML = `
+      <div class="field">
+        <label>من (ساعة)</label>
+        <div style="font-family:'IBM Plex Mono',monospace; padding:9px 0; color:var(--text-dim);">${prevMax}</div>
+      </div>
+      <div class="field">
+        <label>لغاية (ساعة)</label>
+        <input type="number" step="0.5" value="${t.maxHours}" data-idx="${idx}" class="tierMax">
+      </div>
+      <div class="field">
+        <label>الخصم (ساعة)</label>
+        <input type="number" step="0.5" value="${t.deductHours}" data-idx="${idx}" class="tierDeduct">
+      </div>
+      <button class="small-x" data-idx="${idx}">✕</button>
+    `;
+    box.appendChild(row);
+  });
+  box.querySelectorAll('.tierMax').forEach(inp=>{
+    inp.onchange = e=>{
+      sys.fridayRule.tiers[e.target.dataset.idx].maxHours = parseFloat(e.target.value)||0;
+      renderTiers(sys);
+    };
+  });
+  box.querySelectorAll('.tierDeduct').forEach(inp=>{
+    inp.oninput = e=>{ sys.fridayRule.tiers[e.target.dataset.idx].deductHours = parseFloat(e.target.value)||0; };
+  });
+  box.querySelectorAll('.small-x').forEach(btn=>{
+    btn.onclick = e=>{
+      sys.fridayRule.tiers.splice(e.target.dataset.idx,1);
+      renderTiers(sys);
+    };
+  });
+}
+
+function renderAllowances(sys){
+  const box = document.getElementById('allowRows');
+  if(!box) return;
+  box.innerHTML = '';
+  sys.allowances.forEach((a,idx)=>{
+    const row = document.createElement('div');
+    row.className = 'allow-row';
+    row.innerHTML = `
+      <div class="field">
+        <label>اسم البدل</label>
+        <input type="text" value="${a.name}" data-idx="${idx}" class="allowName">
+      </div>
+      <div class="field">
+        <label>القيمة (شهريًا/يوميًا حسب الموظف)</label>
+        <input type="number" value="${a.amount}" data-idx="${idx}" class="allowAmt">
+      </div>
+      <button class="small-x" data-idx="${idx}">✕</button>
+    `;
+    box.appendChild(row);
+  });
+  box.querySelectorAll('.allowName').forEach(inp=> inp.oninput = e=> sys.allowances[e.target.dataset.idx].name = e.target.value);
+  box.querySelectorAll('.allowAmt').forEach(inp=> inp.oninput = e=> sys.allowances[e.target.dataset.idx].amount = parseFloat(e.target.value)||0);
+  box.querySelectorAll('.small-x').forEach(btn=> btn.onclick = e=>{
+    sys.allowances.splice(e.target.dataset.idx,1);
+    renderAllowances(sys);
+  });
+}
+
+function render(){ renderTabs(); renderEditor(); }
+render();
+
+Auth.finalizeAuthUI();
+
+});
+</script>
+</body>
+</html>

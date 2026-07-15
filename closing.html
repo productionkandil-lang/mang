@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تقفيل الشهر — GM Marine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+  }
+  header{
+    padding:22px 32px; border-bottom:1px solid var(--border); background:var(--bg-raised);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{font-family:'Cairo',sans-serif; font-weight:800; font-size:22px; margin:0; color:var(--brass-bright);}
+  header .tag{color:var(--text-dim); font-size:13px; margin-top:4px;}
+  nav a{color:var(--text-dim); text-decoration:none; margin-inline-start:10px; font-size:12px; padding:6px 3px; border-bottom:2px solid transparent;}
+  nav a:hover{color:var(--brass-bright);}
+  nav a.active{color:var(--brass-bright); border-color:var(--brass);}
+  main{max-width:1400px; margin:0 auto; padding:28px 24px 100px;}
+
+  .stats{display:flex; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
+  .stat{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 18px; min-width:140px;}
+  .stat .n{font-family:'IBM Plex Mono',monospace; font-size:20px; font-weight:600; color:var(--brass-bright);}
+  .stat .l{font-size:11.5px; color:var(--text-dim); margin-top:2px;}
+
+  .toolbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:12px; flex-wrap:wrap;}
+  .toolbar h2{font-family:'Cairo',sans-serif; font-size:19px; margin:0; font-weight:700;}
+  .toolbar p{color:var(--text-dim); font-size:13px; margin:4px 0 0;}
+  .actions{display:flex; gap:8px; flex-wrap:wrap;}
+  button{
+    font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); padding:9px 15px; font-size:13px; font-weight:500;
+  }
+  button:hover{border-color:var(--brass);}
+  button.primary{background:var(--brass); border-color:var(--brass); color:#1a1410; font-weight:700;}
+  button.primary:hover{background:var(--brass-bright);}
+  button.success{background:var(--success); border-color:var(--success); color:#0c1a10; font-weight:700;}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+
+  .cols-panel{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 20px;
+    margin-bottom:18px; display:flex; flex-wrap:wrap; gap:10px 20px;
+  }
+  .col-chk{display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text-dim);}
+  .col-chk input{accent-color:var(--brass); cursor:pointer;}
+
+  .table-wrap{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
+  table{width:100%; border-collapse:collapse; background:var(--surface);}
+  thead th{background:var(--surface-2); text-align:right; padding:10px 11px; font-size:11px; color:var(--text-dim); font-weight:700; border-bottom:1px solid var(--border); white-space:nowrap;}
+  thead th.sortable{cursor:pointer; user-select:none;}
+  thead th.sortable:hover{color:var(--brass-bright);}
+  .sort-arrow{font-size:9px; color:var(--brass-bright);}
+  tbody td{padding:8px 11px; border-bottom:1px solid var(--border); font-size:12.5px; white-space:nowrap; font-family:'IBM Plex Mono',monospace;}
+  tbody td.name-col{font-family:'Tajawal',sans-serif; font-weight:600;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:rgba(200,137,79,.04);}
+  td.net{color:var(--brass-bright); font-weight:700; font-size:13.5px;}
+  td.neg{color:var(--danger);}
+  .sel-check{accent-color:var(--brass); cursor:pointer;}
+  .empty{text-align:center; padding:70px 20px; color:var(--text-dim);}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:var(--surface-2); border:1px solid var(--brass); color:var(--text); padding:12px 22px;
+    border-radius:10px; font-size:13.5px; transition:.25s; pointer-events:none; z-index:50;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
+<header>
+  <div>
+    <h1>GM Marine — تقفيل الشهر</h1>
+    <div class="tag">التقرير النهائي — كل الحضور، الأوفرتايم، البدلات، السلف، والصافي لكل موظف</div>
+  </div>
+  <nav>
+    <a href="index.html">الرئيسية</a>
+    <a href="employees.html">الموظفين</a>
+    <a href="systems.html">أنظمة العمل</a>
+    <a href="upload.html">رفع الملف</a>
+    <a href="records.html">بيانات الشهر</a>
+    <a href="advances.html">السلف والخصومات</a>
+    <a href="holidays.html">الإجازات الرسمية</a>
+    <a href="schedule.html">مواعيد تاريخية</a>
+    <a href="van.html">عربية الوردية</a>
+    <a href="closing.html" class="active">تقفيل الشهر</a>
+    <a href="history.html">الشهور السابقة</a>
+  </nav>
+</header>
+
+<main>
+  <div id="emptyWarning" class="empty" style="display:none;">
+    مفيش بيانات حضور محسوبة لسه — روح صفحة <a href="upload.html" style="color:var(--brass-bright)">رفع الملف</a> وارفع الملف واضغط "احسب الشهر" الأول
+  </div>
+
+  <div id="reportBody" style="display:none;">
+    <div class="stats" id="stats"></div>
+
+    <div class="toolbar">
+      <div>
+        <h2>تقرير الموظفين</h2>
+        <p>حدد الأعمدة اللي عايز تظهر، وحدد موظف أو اتنين للطباعة</p>
+      </div>
+      <div class="actions">
+        <button id="printBtn" data-auth-safe="1">🖨 طباعة المحدد</button>
+        <button id="closeMonthBtn" class="success">✔ تقفيل الشهر وأرشفته</button>
+      </div>
+    </div>
+
+    <div class="cols-panel" id="colsPanel"></div>
+
+    <div class="table-wrap">
+      <table id="reportTable">
+        <thead id="reportHead"></thead>
+        <tbody id="reportBodyRows"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast">تم</div>
+
+<script>
+Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
+
+const EMP_KEY = 'gm_att_employees';
+const SYS_KEY = 'gm_att_systems';
+const PROCESSED_KEY = 'gm_att_processed';
+const RAW_KEY = 'gm_att_raw';
+const ADV_KEY = 'gm_att_advances';
+const ARCHIVE_KEY = 'gm_att_archive';
+const COLS_KEY = 'gm_att_report_cols';
+
+function load(key, def){ return JSON.parse(localStorage.getItem(key) || JSON.stringify(def)); }
+function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+function migrateEmployees(list){
+  let migrated = false;
+  list.forEach(e=>{
+    if(!e.employmentPeriods){
+      e.employmentPeriods = (e.startDate || e.endDate) ? [{ startDate: e.startDate||null, endDate: e.endDate||null }] : [];
+      migrated = true;
+    }
+  });
+  if(migrated) localStorage.setItem(EMP_KEY, JSON.stringify(list));
+  return list;
+}
+const employees = migrateEmployees(load(EMP_KEY, []));
+function migrateSystems(s){
+  let migrated = false;
+  s.forEach(sys=>{
+    if(!sys.weeklyOffDays){ sys.weeklyOffDays = sys.weeklyOffDay!=null ? [sys.weeklyOffDay] : [5]; migrated = true; }
+    if(!sys.restDayMode){ sys.restDayMode = 'weekly'; migrated = true; }
+    if(sys.monthlyRestDays==null){ sys.monthlyRestDays = 4; migrated = true; }
+    if(sys.overtime && sys.overtime.baseHours==null){
+      sys.overtime.baseHours = sys.overtime.thresholdHours!=null ? sys.overtime.thresholdHours - (sys.overtime.rate1MaxHours||1.5) : 8;
+      migrated = true;
+    }
+    if(sys.overtime && sys.overtime.rate1MaxHours==null){ sys.overtime.rate1MaxHours = 1.5; migrated = true; }
+    if(!sys.absenceDeduction){
+      sys.absenceDeduction = { enabled:false, tiers:[
+        { maxDays:1, mode:'none' },{ maxDays:2, mode:'fixed', value:1 },
+        { maxDays:5, mode:'exact' },{ maxDays:11, mode:'exactPlus', value:1 }
+      ], beyondMode:'presentOnly' };
+      migrated = true;
+    }
+  });
+  if(migrated) localStorage.setItem(SYS_KEY, JSON.stringify(s));
+  return s;
+}
+const systems = migrateSystems(load(SYS_KEY, []));
+const processed = load(PROCESSED_KEY, null);
+const rawRows = load(RAW_KEY, []).map(r=>({...r, date:new Date(r.date)}));
+const advances = load(ADV_KEY, []);
+const vanLog = load('gm_att_van_log', []);
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+const COLUMN_DEFS = [
+  { key:'code', label:'الكود', always:true },
+  { key:'name', label:'الاسم', always:true },
+  { key:'system', label:'النظام', default:true },
+  { key:'daysPresent', label:'أيام حضور', default:true },
+  { key:'daysAbsent', label:'أيام غياب', default:true },
+  { key:'regularHours', label:'ساعات عادية', default:false },
+  { key:'ot1Hours', label:'أوفرتايم ×1', default:true },
+  { key:'ot15Hours', label:'أوفرتايم ×1.5', default:true },
+  { key:'fridayOtHours', label:'أوفرتايم الجمعة', default:false },
+  { key:'lateMinutes', label:'دقائق التأخير', default:false },
+  { key:'baseSalary', label:'المرتب الأساسي', default:true },
+  { key:'hourlyRate', label:'أجر الساعة', default:false },
+  { key:'otAmount', label:'قيمة الأوفرتايم', default:true },
+  { key:'lateAmount', label:'خصم التأخير', default:true },
+  { key:'absentAmount', label:'خصم الغياب', default:true },
+  { key:'transportAllowance', label:'بدل مواصلات', default:true },
+  { key:'otherAllowances', label:'بدلات أخرى', default:false },
+  { key:'advanceDue', label:'سلفة مستحقة', default:true },
+  { key:'deductionDue', label:'خصم يدوي', default:true },
+  { key:'netSalary', label:'الصافي', always:true },
+];
+
+function loadColumnPrefs(){
+  const saved = load(COLS_KEY, null);
+  if(saved) return saved;
+  const def = {};
+  COLUMN_DEFS.forEach(c=> def[c.key] = c.always || c.default);
+  save(COLS_KEY, def);
+  return def;
+}
+let colPrefs = loadColumnPrefs();
+
+function getSystem(id){ return systems.find(s=>s.id===id); }
+function getEmp(code){ return employees.find(e=>e.code===code); }
+
+// ---- transport eligibility (excludes overnight-stay days and the day after) ----
+function computeTransportEligibleDays(code){
+  const empRows = rawRows.filter(r=>r.code===code).sort((a,b)=> new Date(a.date)-new Date(b.date));
+  const excluded = new Set();
+  empRows.forEach(r=>{
+    if(r.stayedOvernight){
+      excluded.add(r.dateKey);
+      const next = new Date(r.date); next.setDate(next.getDate()+1);
+      const nk = next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')+'-'+String(next.getDate()).padStart(2,'0');
+      excluded.add(nk);
+    }
+  });
+  let count = 0;
+  empRows.forEach(r=>{
+    const attended = r.clockIn!=null || r.clockOut!=null;
+    if(attended && !excluded.has(r.dateKey)) count++;
+  });
+  return count;
+}
+
+function periodBounds(){
+  if(!rawRows.length) return { start:null, end:null };
+  const keys = rawRows.map(r=>r.dateKey).sort();
+  return { start: keys[0], end: keys[keys.length-1] };
+}
+const PERIOD = periodBounds();
+const vanEntriesThisPeriod = vanLog.filter(e => PERIOD.start && PERIOD.end && e.date>=PERIOD.start && e.date<=PERIOD.end);
+const vanTotal = vanEntriesThisPeriod.reduce((s,e)=>s+(e.baseAmount||0)+(e.extraAmount||0),0);
+
+function countDaysBetween(startKey, endKey){
+  const s = new Date(startKey), e = new Date(endKey);
+  return Math.round((e-s)/86400000) + 1;
+}
+function addDays(dateKey, n){
+  const d = new Date(dateKey);
+  d.setDate(d.getDate()+n);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function isDateInEmployment(emp, dk){
+  if(!emp.employmentPeriods || !emp.employmentPeriods.length) return true;
+  return emp.employmentPeriods.some(p => (!p.startDate || dk>=p.startDate) && (!p.endDate || dk<=p.endDate));
+}
+function countEmploymentGapDays(emp){
+  if(!PERIOD.start || !PERIOD.end) return 0;
+  if(!emp.employmentPeriods || !emp.employmentPeriods.length) return 0;
+  let d = new Date(PERIOD.start);
+  const end = new Date(PERIOD.end);
+  let gap = 0;
+  while(d <= end){
+    const dk = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(!isDateInEmployment(emp, dk)) gap++;
+    d.setDate(d.getDate()+1);
+  }
+  return gap;
+}
+
+function computeAbsentAmount(res, emp, sys, baseSalary){
+  const generalOn = sys.deductions && sys.deductions.enabled;
+  const tieredOn = sys.absenceDeduction && sys.absenceDeduction.enabled;
+  if(!generalOn && !tieredOn) return 0;
+
+  const fixedDivisor = (sys.deductions && sys.deductions.absentDivisor) || 30;
+  const gapDays = countEmploymentGapDays(emp);
+
+  if(gapDays > 0){
+    // employee joined/left mid-period, or had a gap in the middle (left & came back) —
+    // fixed divisor always used, and every calendar day outside any employment period is
+    // deducted in full, INCLUDING weekly-off days and official holidays
+    return (res.daysAbsent + gapDays) * (baseSalary / fixedDivisor);
+  }
+
+  if(res.daysPresent===0 && res.daysAbsent>0){
+    // didn't show up a single day the whole period — full salary deducted regardless of
+    // how many calendar days the month actually has (28 vs 31 should give the same result: 0)
+    return baseSalary;
+  }
+
+  // for monthly rest-day systems, the first N absence days each month are free (equivalent
+  // to a weekly-off day, just not tied to a specific weekday) — consume the quota first
+  const rawAbsentDays = res.daysAbsent;
+  const effectiveAbsentDays = sys.restDayMode==='monthly'
+    ? Math.max(0, rawAbsentDays - (sys.monthlyRestDays||0))
+    : rawAbsentDays;
+
+  if(!tieredOn){
+    // full month, simple mode — always use the fixed configured divisor (e.g. 30), never the
+    // upload period's actual span, so a partially-uploaded month never distorts the daily rate
+    return effectiveAbsentDays * (baseSalary / fixedDivisor);
+  }
+
+  const dailyRate = baseSalary / fixedDivisor;
+  const absentDays = effectiveAbsentDays;
+  const tiers = sys.absenceDeduction.tiers;
+  let matched = null;
+  for(const t of tiers){ if(absentDays <= t.maxDays){ matched = t; break; } }
+
+  let deductDays = 0;
+  if(matched){
+    if(matched.mode==='none') deductDays = 0;
+    else if(matched.mode==='fixed') deductDays = matched.value||0;
+    else if(matched.mode==='exact') deductDays = absentDays;
+    else if(matched.mode==='exactPlus') deductDays = absentDays + (matched.value||0);
+  } else {
+    if(sys.absenceDeduction.beyondMode==='presentOnly'){
+      deductDays = Math.max(0, fixedDivisor - res.daysPresent);
+    } else {
+      const last = tiers[tiers.length-1];
+      deductDays = last && last.mode==='exactPlus' ? absentDays + (last.value||0) : absentDays;
+    }
+  }
+  return deductDays * dailyRate;
+}
+
+function buildReportRows(){
+  if(!processed || !processed.results) return [];
+  return processed.results.map(res=>{
+    const emp = getEmp(res.code) || {};
+    const sys = getSystem(res.systemId);
+    const baseSalary = emp.baseSalary || 0;
+    const hourlyRate = sys && sys.monthlyRequiredHours ? baseSalary / sys.monthlyRequiredHours : 0;
+
+    const otAmount = (res.ot1Hours + res.ot15Hours + res.fridayOtHours) * hourlyRate;
+    const lateAmount = res.lateMinutes ? res.lateMinutes * (hourlyRate/60) : 0;
+    const absentAmount = computeAbsentAmount(res, emp, sys||{deductions:{enabled:false}}, baseSalary);
+
+    const transportDays = computeTransportEligibleDays(res.code);
+    const transportAllowance = transportDays * (emp.dailyTransportAllowance || 0);
+
+    const otherAllowances = sys ? sys.allowances.filter(a=>!a.linkedToAttendance || !/مواصلات/.test(a.name)).reduce((s,a)=> s + (a.name.includes('مواصلات') ? 0 : a.amount), 0) : 0;
+
+    const empAdvances = advances.filter(a=>a.employeeCode===res.code && a.remaining>0);
+    const advanceDue = empAdvances.filter(a=>a.type==='advance').reduce((s,a)=> s + Math.min(a.totalAmount/a.installments, a.remaining), 0);
+    const deductionDue = empAdvances.filter(a=>a.type==='deduction').reduce((s,a)=> s + Math.min(a.totalAmount/a.installments, a.remaining), 0);
+
+    const netSalary = baseSalary + otAmount + transportAllowance + otherAllowances - lateAmount - absentAmount - advanceDue - deductionDue;
+
+    return {
+      code: res.code, name: res.name, systemId: res.systemId,
+      systemName: sys ? sys.name : '—',
+      daysPresent: res.daysPresent, daysAbsent: res.daysAbsent,
+      regularHours: res.regularHours, ot1Hours: res.ot1Hours, ot15Hours: res.ot15Hours, fridayOtHours: res.fridayOtHours,
+      lateMinutes: res.lateMinutes,
+      baseSalary, hourlyRate, otAmount, lateAmount, absentAmount,
+      transportAllowance, otherAllowances, advanceDue, deductionDue, netSalary
+    };
+  });
+}
+
+let reportRows = [];
+let selectedCodes = new Set();
+let sortField = null;
+let sortDir = 'asc';
+
+function renderColsPanel(){
+  const box = document.getElementById('colsPanel');
+  box.innerHTML = COLUMN_DEFS.filter(c=>!c.always).map(c=>`
+    <label class="col-chk">
+      <input type="checkbox" data-key="${c.key}" ${colPrefs[c.key] ? 'checked':''}>
+      ${c.label}
+    </label>
+  `).join('');
+  box.querySelectorAll('input').forEach(chk=>{
+    chk.onchange = e=>{
+      colPrefs[e.target.dataset.key] = e.target.checked;
+      save(COLS_KEY, colPrefs);
+      renderTable();
+    };
+  });
+}
+
+function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '<span style="color:#c15b4f;font-weight:700;" title="قيمة غير محسوبة - فيه مشكلة في البيانات">⚠ خطأ</span>'; return (Math.round(n*100)/100).toLocaleString(); }
+
+function renderStats(){
+  const totalNet = reportRows.reduce((s,r)=>s+r.netSalary,0);
+  const totalOt = reportRows.reduce((s,r)=>s+r.otAmount,0);
+  const totalDed = reportRows.reduce((s,r)=>s+r.lateAmount+r.absentAmount+r.advanceDue+r.deductionDue,0);
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="n">${reportRows.length}</div><div class="l">موظف في التقرير</div></div>
+    <div class="stat"><div class="n">${fmt(totalOt)}</div><div class="l">إجمالي الأوفرتايم</div></div>
+    <div class="stat"><div class="n">${fmt(totalDed)}</div><div class="l">إجمالي الخصومات</div></div>
+    <div class="stat"><div class="n">${fmt(totalNet)}</div><div class="l">إجمالي الصافي (الموظفين)</div></div>
+    <div class="stat"><div class="n">${fmt(vanTotal)}</div><div class="l">مصاريف عربية الوردية (${vanEntriesThisPeriod.length} يوم)</div></div>
+    <div class="stat"><div class="n">${fmt(totalNet + vanTotal)}</div><div class="l">الإجمالي الكلي (رواتب + عربية)</div></div>
+  `;
+}
+
+function renderTable(){
+  const visibleCols = COLUMN_DEFS.filter(c=> c.always || colPrefs[c.key]);
+  const head = document.getElementById('reportHead');
+  head.innerHTML = '<tr><th></th>' + visibleCols.map(c=>
+    `<th class="sortable" data-sort="${c.key}">${c.label} <span class="sort-arrow" id="arrow-${c.key}">${sortField===c.key ? (sortDir==='asc'?'▲':'▼') : ''}</span></th>`
+  ).join('') + '</tr>';
+  head.querySelectorAll('th.sortable').forEach(th=>{
+    th.onclick = ()=>{
+      const field = th.dataset.sort;
+      if(sortField===field){ sortDir = sortDir==='asc' ? 'desc' : 'asc'; }
+      else { sortField = field; sortDir = 'asc'; }
+      renderTable();
+    };
+  });
+
+  const body = document.getElementById('reportBodyRows');
+  body.innerHTML = '';
+  const sorted = reportRows.slice().sort((a,b)=>{
+    if(sortField){
+      const av = sortField==='system' ? a.systemName : a[sortField];
+      const bv = sortField==='system' ? b.systemName : b[sortField];
+      let cmp = (typeof av === 'number' && typeof bv === 'number') ? av-bv : String(av).localeCompare(String(bv),'ar',{numeric:true});
+      return sortDir==='asc' ? cmp : -cmp;
+    }
+    return a.name.localeCompare(b.name,'ar');
+  });
+  sorted.forEach(r=>{
+    const tr = document.createElement('tr');
+    const cells = visibleCols.map(c=>{
+      let val = r[c.key];
+      let cls = '';
+      if(c.key==='name'){ cls='name-col'; }
+      if(c.key==='system'){ val = r.systemName; }
+      if(c.key==='netSalary'){ cls='net'; val = fmt(val); }
+      else if(typeof val === 'number'){ val = fmt(val); if(['lateAmount','absentAmount','advanceDue','deductionDue'].includes(c.key) && r[c.key]>0) cls='neg'; }
+      return `<td class="${cls}">${val}</td>`;
+    }).join('');
+    tr.innerHTML = `<td><input type="checkbox" class="sel-check" data-auth-safe="1" data-code="${r.code}" ${selectedCodes.has(r.code)?'checked':''}></td>${cells}`;
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll('.sel-check').forEach(chk=>{
+    chk.onchange = e=>{
+      if(e.target.checked) selectedCodes.add(e.target.dataset.code);
+      else selectedCodes.delete(e.target.dataset.code);
+    };
+  });
+}
+
+document.getElementById('printBtn').onclick = ()=>{
+  if(!selectedCodes.size){ alert('حدد موظف واحد أو اتنين على الأكثر للطباعة'); return; }
+  if(selectedCodes.size > 2){ alert('تقدر تطبع موظفين بحد أقصى في نفس الصفحة'); return; }
+  const rows = reportRows.filter(r=>selectedCodes.has(r.code));
+  printPayslips(rows);
+};
+
+document.getElementById('closeMonthBtn').onclick = ()=>{
+  if(!reportRows.length){ alert('مفيش بيانات لتقفيلها'); return; }
+  const label = prompt('اسم/شهر التقرير ده (مثلاً: يوليو 2026):', '');
+  if(!label) return;
+  if(!confirm(`هيتم أرشفة تقرير "${label}" ومسح بيانات الحضور الحالية عشان تبدأ الشهر الجديد. متأكد؟`)) return;
+
+  const archive = load(ARCHIVE_KEY, []);
+  archive.push({
+    id: 'arch_'+Date.now().toString(36),
+    label, closedAt: Date.now(),
+    columnPrefs: {...colPrefs},
+    rows: reportRows,
+    vanTotal, vanEntries: vanEntriesThisPeriod
+  });
+  save(ARCHIVE_KEY, archive);
+
+  // deduct advances/deductions applied this month
+  const advList = load(ADV_KEY, []);
+  advList.forEach(a=>{
+    const applied = reportRows.find(r=>r.code===a.employeeCode);
+    if(!applied || a.remaining<=0) return;
+    const due = Math.min(a.totalAmount/a.installments, a.remaining);
+    a.remaining = Math.max(0, a.remaining - due);
+  });
+  save(ADV_KEY, advList);
+
+  localStorage.removeItem(RAW_KEY);
+  localStorage.removeItem(PROCESSED_KEY);
+
+  toast('تم تقفيل الشهر وأرشفته بنجاح');
+  setTimeout(()=> location.href = 'history.html', 1200);
+};
+
+// ---------- print ----------
+function printPayslips(rows){
+  const win = window.open('', '_blank');
+  const cardHtml = rows.map(r => payslipCardHtml(r)).join('');
+  const cols = rows.length === 2 ? '1fr 1fr' : '1fr';
+  win.document.write(`
+    <html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير راتب</title>
+    <style>
+      body{ font-family: Tajawal, Arial, sans-serif; margin:0; padding:24px; color:#1a1a1a; }
+      .wrap{ display:grid; grid-template-columns:${cols}; gap:20px; }
+      .card{ border:1.5px solid #333; border-radius:10px; padding:18px; }
+      .card h2{ font-size:16px; margin:0 0 2px; }
+      .card .sub{ font-size:11px; color:#555; margin-bottom:14px; }
+      table{ width:100%; border-collapse:collapse; font-size:12px; }
+      td{ padding:5px 4px; border-bottom:1px solid #ddd; }
+      td.label{ color:#555; }
+      td.val{ text-align:left; font-family:'Courier New',monospace; font-weight:600; }
+      tr.net td{ font-weight:800; font-size:14px; border-top:2px solid #333; border-bottom:none; padding-top:8px; }
+      .sig{ margin-top:24px; display:flex; justify-content:space-between; font-size:11px; color:#555; }
+      .sig div{ border-top:1px solid #999; padding-top:6px; width:40%; text-align:center; }
+      @media print{ body{ padding:10px; } }
+    </style></head>
+    <body>
+      <div class="wrap">${cardHtml}</div>
+      <script>window.onload = () => window.print();<\/script>
+    </body></html>
+  `);
+  win.document.close();
+}
+
+function payslipCardHtml(r){
+  const row = (label, val, isNet) => `<tr class="${isNet?'net':''}"><td class="label">${label}</td><td class="val">${fmt(val)}</td></tr>`;
+  return `
+    <div class="card">
+      <h2>${r.name}</h2>
+      <div class="sub">كود: ${r.code} — النظام: ${r.systemName}</div>
+      <table>
+        ${row('المرتب الأساسي', r.baseSalary)}
+        ${row('أيام الحضور', r.daysPresent)}
+        ${row('أيام الغياب', r.daysAbsent)}
+        ${row('قيمة الأوفرتايم', r.otAmount)}
+        ${row('بدل المواصلات', r.transportAllowance)}
+        ${row('بدلات أخرى', r.otherAllowances)}
+        ${row('خصم التأخير', -r.lateAmount)}
+        ${row('خصم الغياب', -r.absentAmount)}
+        ${row('سلفة مستحقة', -r.advanceDue)}
+        ${row('خصم يدوي', -r.deductionDue)}
+        ${row('الصافي', r.netSalary, true)}
+      </table>
+      <div class="sig">
+        <div>توقيع الموظف</div>
+        <div>توقيع الإدارة</div>
+      </div>
+    </div>
+  `;
+}
+
+// ---------- init ----------
+if(!processed || !processed.results || !processed.results.length){
+  document.getElementById('emptyWarning').style.display = 'block';
+} else {
+  reportRows = buildReportRows();
+  document.getElementById('reportBody').style.display = 'block';
+  renderColsPanel();
+  renderStats();
+  renderTable();
+}
+
+Auth.finalizeAuthUI();
+
+});
+</script>
+</body>
+</html>

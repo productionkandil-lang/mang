@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بيانات الشهر — GM Marine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+  }
+  header{
+    padding:22px 32px; border-bottom:1px solid var(--border); background:var(--bg-raised);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{font-family:'Cairo',sans-serif; font-weight:800; font-size:22px; margin:0; color:var(--brass-bright);}
+  header .tag{color:var(--text-dim); font-size:13px; margin-top:4px;}
+  nav a{color:var(--text-dim); text-decoration:none; margin-inline-start:10px; font-size:12px; padding:6px 3px; border-bottom:2px solid transparent;}
+  nav a:hover{color:var(--brass-bright);}
+  nav a.active{color:var(--brass-bright); border-color:var(--brass);}
+  main{max-width:1320px; margin:0 auto; padding:28px 24px 100px;}
+
+  .toolbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; gap:12px; flex-wrap:wrap;}
+  .toolbar h2{font-family:'Cairo',sans-serif; font-size:19px; margin:0; font-weight:700;}
+  .toolbar p{color:var(--text-dim); font-size:13px; margin:4px 0 0;}
+  .filters{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  select, input.date-input{
+    background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text);
+    padding:9px 13px; font-family:'IBM Plex Mono',monospace; font-size:13px;
+  }
+  select:focus, input:focus{outline:none; border-color:var(--brass);}
+  button{
+    font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); padding:9px 16px; font-size:13.5px; font-weight:500;
+  }
+  button:hover{border-color:var(--brass);}
+  button.primary{background:var(--brass); border-color:var(--brass); color:#1a1410; font-weight:700;}
+  button.primary:hover{background:var(--brass-bright);}
+  button.danger-ghost{background:transparent; color:var(--danger); border-color:transparent;}
+  button.danger-ghost:hover{border-color:var(--danger); background:rgba(193,91,79,.08);}
+
+  .table-wrap{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
+  table{width:100%; border-collapse:collapse; background:var(--surface);}
+  thead th{background:var(--surface-2); text-align:right; padding:11px 12px; font-size:11.5px; color:var(--text-dim); font-weight:700; border-bottom:1px solid var(--border); white-space:nowrap;}
+  thead th.sortable{cursor:pointer; user-select:none;}
+  thead th.sortable:hover{color:var(--brass-bright);}
+  .sort-arrow{font-size:10px; color:var(--brass-bright);}
+  tbody td{padding:7px 10px; border-bottom:1px solid var(--border); font-size:13px; white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.off-day{background:rgba(200,137,79,.04);}
+  tbody tr.edited{background:rgba(95,163,115,.06);}
+  tbody tr:hover{background:rgba(200,137,79,.07);}
+  td.name-col{font-weight:600; font-family:'Tajawal',sans-serif;}
+  td.code-col{font-family:'IBM Plex Mono',monospace; color:var(--text-dim); font-size:12px;}
+  input.time-input{
+    width:88px; background:var(--bg-raised); border:1px solid var(--border); border-radius:6px;
+    color:var(--text); padding:6px 8px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;
+  }
+  input.time-input:focus{outline:none; border-color:var(--brass);}
+  .weekday-tag{font-size:11.5px; color:var(--text-dim);}
+  .off-badge{font-size:10.5px; background:rgba(200,137,79,.15); color:var(--brass-bright); padding:2px 8px; border-radius:10px; margin-right:4px;}
+  .absent-check{width:16px; height:16px; accent-color:var(--danger); cursor:pointer;}
+  .del-row{background:transparent; border:none; color:var(--danger); cursor:pointer; font-size:14px; padding:4px 7px;}
+  .empty{text-align:center; padding:70px 20px; color:var(--text-dim);}
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:var(--surface-2); border:1px solid var(--brass); color:var(--text); padding:12px 22px;
+    border-radius:10px; font-size:13.5px; transition:.25s; pointer-events:none; z-index:50;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .footer-bar{
+    position:sticky; bottom:0; background:var(--bg-raised); border-top:1px solid var(--border);
+    padding:14px 0; margin-top:20px; display:flex; justify-content:flex-end; gap:10px;
+  }
+  .legend{display:flex; gap:16px; margin-bottom:14px; font-size:12px; color:var(--text-dim); flex-wrap:wrap;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:10px; height:10px; border-radius:3px; display:inline-block;}
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
+<header>
+  <div>
+    <h1>GM Marine — بيانات الشهر</h1>
+    <div class="tag">مراجعة وتعديل حضور وانصراف كل يوم — لكل موظف أو كل الموظفين</div>
+  </div>
+  <nav>
+    <a href="index.html">الرئيسية</a>
+    <a href="employees.html">الموظفين</a>
+    <a href="systems.html">أنظمة العمل</a>
+    <a href="upload.html">رفع الملف</a>
+    <a href="records.html" class="active">بيانات الشهر</a>
+    <a href="advances.html">السلف والخصومات</a>
+    <a href="holidays.html">الإجازات الرسمية</a>
+    <a href="schedule.html">مواعيد تاريخية</a>
+    <a href="van.html">عربية الوردية</a>
+    <a href="closing.html">تقفيل الشهر</a>
+    <a href="history.html">الشهور السابقة</a>
+  </nav>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div>
+      <h2>سجل الأيام</h2>
+      <p>عدّل ميعاد الحضور أو الانصراف، أو علّم يوم كغياب، ثم اضغط "إعادة الحساب" في صفحة رفع الملف</p>
+    </div>
+    <div class="filters">
+      <select id="empFilter"></select>
+      <button id="addRowBtn">+ إضافة يوم</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:rgba(200,137,79,.3)"></i> يوم الإجازة الأسبوعية</span>
+    <span><i style="background:rgba(95,163,115,.3)"></i> تم تعديله يدويًا</span>
+  </div>
+
+  <div class="table-wrap">
+    <table id="recTable">
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="code">الكود <span class="sort-arrow" id="arrow-code"></span></th>
+          <th class="sortable" data-sort="name">الاسم <span class="sort-arrow" id="arrow-name"></span></th>
+          <th class="sortable" data-sort="dateKey">التاريخ <span class="sort-arrow" id="arrow-dateKey"></span></th>
+          <th>اليوم</th>
+          <th>حضور</th><th>انصراف</th><th>غياب</th><th>بات؟</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="recBody"></tbody>
+    </table>
+  </div>
+  <div id="emptyState" class="empty" style="display:none;">
+    مفيش بيانات مرفوعة لسه — روح صفحة <a href="upload.html" style="color:var(--brass-bright)">رفع الملف</a> الأول
+  </div>
+
+  <div class="footer-bar">
+    <button id="saveBtn" class="primary">حفظ التعديلات</button>
+  </div>
+</main>
+
+<div class="toast" id="toast">تم الحفظ</div>
+
+<script>
+Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
+
+const RAW_KEY = 'gm_att_raw';
+const EMP_KEY = 'gm_att_employees';
+const SYS_KEY = 'gm_att_systems';
+
+const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+function loadRaw(){
+  const saved = JSON.parse(localStorage.getItem(RAW_KEY) || '[]');
+  return saved.map(r => ({...r, date: new Date(r.date)}));
+}
+function saveRaw(rows){
+  localStorage.setItem(RAW_KEY, JSON.stringify(rows));
+}
+function loadEmployees(){ return JSON.parse(localStorage.getItem(EMP_KEY) || '[]'); }
+function resolveSystemId(emp, dk){
+  if(emp.systemAssignments && emp.systemAssignments.length){
+    const match = emp.systemAssignments.find(a => (!a.startDate || dk>=a.startDate) && (!a.endDate || dk<=a.endDate));
+    if(match) return match.systemId;
+  }
+  return emp.systemId;
+}
+function loadSystems(){
+  const s = JSON.parse(localStorage.getItem(SYS_KEY) || '[]');
+  let migrated = false;
+  s.forEach(sys=>{
+    if(!sys.weeklyOffDays){ sys.weeklyOffDays = sys.weeklyOffDay!=null ? [sys.weeklyOffDay] : [5]; migrated = true; }
+    if(sys.overtime && sys.overtime.baseHours==null){
+      sys.overtime.baseHours = sys.overtime.thresholdHours!=null ? sys.overtime.thresholdHours - (sys.overtime.rate1MaxHours||1.5) : 8;
+      migrated = true;
+    }
+    if(sys.overtime && sys.overtime.rate1MaxHours==null){ sys.overtime.rate1MaxHours = 1.5; migrated = true; }
+  });
+  if(migrated) localStorage.setItem(SYS_KEY, JSON.stringify(s));
+  return s;
+}
+
+let rows = loadRaw();
+let employees = loadEmployees();
+let systems = loadSystems();
+let empFilterVal = 'all';
+let sortField = null;
+let sortDir = 'asc';
+let dirty = new Set(); // indices edited
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function minutesToTime(m){
+  if(m==null || isNaN(m)) return '';
+  const h = Math.floor(m/60), mm = m%60;
+  return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+}
+function timeToMinutes(t){
+  if(!t) return null;
+  const m = t.match(/^(\d{1,2}):(\d{2})/);
+  if(!m) return null;
+  return parseInt(m[1])*60+parseInt(m[2]);
+}
+function dateKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function renderFilter(){
+  const sel = document.getElementById('empFilter');
+  const uniqueCodes = [...new Set(rows.map(r=>r.code))];
+  sel.innerHTML = '<option value="all">كل الموظفين</option>' +
+    uniqueCodes.map(code=>{
+      const name = (rows.find(r=>r.code===code)||{}).name || code;
+      return `<option value="${code}">${name} (${code})</option>`;
+    }).join('');
+  sel.value = empFilterVal;
+  sel.onchange = e=>{ empFilterVal = e.target.value; renderTable(); };
+}
+
+function renderTable(){
+  const body = document.getElementById('recBody');
+  const empty = document.getElementById('emptyState');
+
+  if(!rows.length){
+    document.getElementById('recTable').style.display='none';
+    empty.style.display='block';
+    return;
+  }
+  document.getElementById('recTable').style.display='table';
+  empty.style.display='none';
+
+  body.innerHTML = '';
+  const filtered = rows
+    .map((r,idx)=>({...r, _idx:idx}))
+    .filter(r=> empFilterVal==='all' || r.code===empFilterVal)
+    .sort((a,b)=>{
+      if(sortField){
+        const av = a[sortField], bv = b[sortField];
+        let cmp;
+        if(sortField==='dateKey') cmp = new Date(a.date) - new Date(b.date);
+        else cmp = String(av).localeCompare(String(bv), 'ar', { numeric:true });
+        return sortDir==='asc' ? cmp : -cmp;
+      }
+      return a.code===b.code ? new Date(a.date)-new Date(b.date) : a.name.localeCompare(b.name,'ar');
+    });
+
+  ['code','name','dateKey'].forEach(k=>{
+    const el = document.getElementById('arrow-'+k);
+    if(el) el.textContent = sortField===k ? (sortDir==='asc'?'▲':'▼') : '';
+  });
+
+  filtered.forEach(r=>{
+    const emp = employees.find(e=>e.code===r.code);
+    const sysId = emp ? resolveSystemId(emp, r.dateKey) : null;
+    const sys = sysId!=null ? systems.find(s=>s.id===sysId) : null;
+    const d = new Date(r.date);
+    const weekday = d.getDay();
+    const offDays = sys && sys.restDayMode!=='monthly' ? (sys.weeklyOffDays || (sys.weeklyOffDay!=null ? [sys.weeklyOffDay] : [5])) : [];
+    const isOff = offDays.includes(weekday);
+
+    const tr = document.createElement('tr');
+    tr.className = (isOff ? 'off-day ' : '') + (dirty.has(r._idx) ? 'edited' : '');
+    tr.innerHTML = `
+      <td class="code-col">${r.code}</td>
+      <td class="name-col">${r.name}</td>
+      <td>${dateKey(d)}</td>
+      <td class="weekday-tag">${dayNames[weekday]} ${isOff ? '<span class="off-badge">إجازة</span>' : ''} ${r.autoFilled ? '<span class="off-badge" style="background:rgba(193,91,79,.15);color:#e08d85;">غياب أوتوماتيك</span>' : ''}</td>
+      <td><input type="text" class="time-input" placeholder="--:--" value="${minutesToTime(r.clockIn)}" data-idx="${r._idx}" data-field="clockIn"></td>
+      <td><input type="text" class="time-input" placeholder="--:--" value="${minutesToTime(r.clockOut)}" data-idx="${r._idx}" data-field="clockOut"></td>
+      <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="${r._idx}" ${r.absent?'checked':''}></td>
+      <td style="text-align:center;"><input type="checkbox" class="bayat-check" data-idx="${r._idx}" ${r.stayedOvernight?'checked':''} title="بات في المصنع/المركب ومروحش بيته"></td>
+      <td><button class="del-row" data-idx="${r._idx}" title="حذف اليوم">✕</button></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll('.time-input').forEach(inp=>{
+    inp.onchange = e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      const field = e.target.dataset.field;
+      const val = timeToMinutes(e.target.value);
+      rows[idx][field] = val;
+      if(val!==null) rows[idx].absent = false;
+      delete rows[idx].autoFilled;
+      dirty.add(idx);
+      renderTable();
+    };
+  });
+  body.querySelectorAll('.absent-check').forEach(chk=>{
+    chk.onchange = e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      rows[idx].absent = e.target.checked;
+      if(e.target.checked){ rows[idx].clockIn=null; rows[idx].clockOut=null; }
+      delete rows[idx].autoFilled;
+      dirty.add(idx);
+      renderTable();
+    };
+  });
+  body.querySelectorAll('.bayat-check').forEach(chk=>{
+    chk.onchange = e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      rows[idx].stayedOvernight = e.target.checked;
+      dirty.add(idx);
+      renderTable();
+    };
+  });
+  body.querySelectorAll('.del-row').forEach(btn=>{
+    btn.onclick = e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      if(!confirm('حذف اليوم ده نهائيًا من السجل؟')) return;
+      rows.splice(idx,1);
+      dirty = new Set([...dirty].map(i=> i>idx ? i-1 : i).filter(i=>i!==idx));
+      renderFilter(); renderTable();
+    };
+  });
+}
+
+document.getElementById('addRowBtn').onclick = ()=>{
+  let code = empFilterVal;
+  let name;
+  if(code==='all'){
+    const empList = employees.map(e=>`${e.name} (${e.code})`).join('\n');
+    code = prompt('اكتب كود الموظف اللي هتضيفله يوم:\n\n' + empList);
+    if(!code) return;
+    const emp = employees.find(e=>e.code===code.trim());
+    if(!emp){ alert('مش لاقي موظف بالكود ده'); return; }
+    name = emp.name; code = emp.code;
+  } else {
+    const emp = employees.find(e=>e.code===code);
+    name = emp ? emp.name : (rows.find(r=>r.code===code)||{}).name;
+  }
+  const dateStr = prompt('التاريخ (YYYY-MM-DD):', dateKey(new Date()));
+  if(!dateStr) return;
+  const d = new Date(dateStr);
+  if(isNaN(d)){ alert('تاريخ غير صحيح'); return; }
+  rows.push({ code, name, date: d, dateKey: dateKey(d), weekday: d.getDay(), clockIn:null, clockOut:null, absent:true, stayedOvernight:false });
+  dirty.add(rows.length-1);
+  renderFilter(); renderTable();
+  toast('تم إضافة اليوم');
+};
+
+document.getElementById('saveBtn').onclick = ()=>{
+  saveRaw(rows);
+  localStorage.removeItem('gm_att_processed'); // force recalculation since data changed
+  dirty = new Set();
+  renderTable();
+  toast('تم الحفظ — روح صفحة رفع الملف واضغط "احسب الشهر" لتحديث النتائج');
+};
+
+renderFilter();
+renderTable();
+
+document.querySelectorAll('th.sortable').forEach(th=>{
+  th.onclick = ()=>{
+    const field = th.dataset.sort;
+    if(sortField===field){ sortDir = sortDir==='asc' ? 'desc' : 'asc'; }
+    else { sortField = field; sortDir = 'asc'; }
+    renderTable();
+  };
+});
+
+Auth.finalizeAuthUI();
+
+});
+</script>
+</body>
+</html>

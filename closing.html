@@ -216,7 +216,7 @@ const COLUMN_DEFS = [
   { key:'ot15Hours', label:'أوفرتايم ×1.5', default:true },
   { key:'fridayOtHours', label:'أوفرتايم الجمعة', default:false },
   { key:'lateMinutes', label:'دقائق التأخير', default:false },
-  { key:'baseSalary', label:'المرتب الأساسي', default:true },
+  { key:'baseSalaryDisplay', label:'المرتب الأساسي (شامل أوفرتايم ×1)', default:true },
   { key:'hourlyRate', label:'أجر الساعة', default:false },
   { key:'otAmount', label:'قيمة الأوفرتايم', default:true },
   { key:'lateAmount', label:'خصم التأخير', default:true },
@@ -225,6 +225,7 @@ const COLUMN_DEFS = [
   { key:'otherAllowances', label:'بدلات أخرى', default:false },
   { key:'advanceDue', label:'سلفة مستحقة', default:true },
   { key:'deductionDue', label:'خصم يدوي', default:true },
+  { key:'roundingAdjustment', label:'تقريب الصافي', default:true },
   { key:'netSalary', label:'الصافي', always:true },
 ];
 
@@ -363,7 +364,12 @@ function buildReportRows(){
     const baseSalary = emp.baseSalary || 0;
     const hourlyRate = sys && sys.monthlyRequiredHours ? baseSalary / sys.monthlyRequiredHours : 0;
 
-    const otAmount = (res.ot1Hours + res.ot15Hours + res.fridayOtHours) * hourlyRate;
+    const ot1Amount = (res.ot1Hours||0) * hourlyRate;
+    const ot15FridayAmount = ((res.ot15Hours||0) + (res.fridayOtHours||0)) * hourlyRate;
+    const otAmount = ot1Amount + ot15FridayAmount;
+    // "أساسي الراتب" المعروض = المرتب الأساسي + الأوفرتايم ساعة بساعة (×1) فقط
+    const baseSalaryDisplay = baseSalary + ot1Amount;
+
     const lateAmount = res.lateMinutes ? res.lateMinutes * (hourlyRate/60) : 0;
     const absentAmount = computeAbsentAmount(res, emp, sys||{deductions:{enabled:false}}, baseSalary);
 
@@ -374,19 +380,20 @@ function buildReportRows(){
 
     const empAdvances = advances.filter(a=>a.employeeCode===res.code && a.remaining>0);
     const advanceDue = empAdvances.filter(a=>a.type==='advance').reduce((s,a)=> s + Math.min(a.totalAmount/a.installments, a.remaining), 0);
-    const deductionDueRaw = empAdvances.filter(a=>a.type==='deduction').reduce((s,a)=> s + Math.min(a.totalAmount/a.installments, a.remaining), 0);
-    const deductionDue = Math.round(deductionDueRaw / 5) * 5;
+    const deductionDue = empAdvances.filter(a=>a.type==='deduction').reduce((s,a)=> s + Math.min(a.totalAmount/a.installments, a.remaining), 0);
 
-    const netSalary = baseSalary + otAmount + transportAllowance + otherAllowances - lateAmount - absentAmount - advanceDue - deductionDue;
+    const rawNet = baseSalary + otAmount + transportAllowance + otherAllowances - lateAmount - absentAmount - advanceDue - deductionDue;
+    const netSalary = Math.round(rawNet / 5) * 5;
+    const roundingAdjustment = netSalary - rawNet; // + يعني اتزود للصافي، - يعني اتخصم
 
     return {
-      code: res.code, name: res.name, systemId: res.systemId,
+      code: res.code, name: emp.arabicName || res.name, systemId: res.systemId,
       systemName: sys ? sys.name : '—',
       daysPresent: res.daysPresent, daysAbsent: res.daysAbsent,
       regularHours: res.regularHours, ot1Hours: res.ot1Hours, ot15Hours: res.ot15Hours, fridayOtHours: res.fridayOtHours,
       lateMinutes: res.lateMinutes,
-      baseSalary, hourlyRate, otAmount, lateAmount, absentAmount,
-      transportAllowance, otherAllowances, advanceDue, deductionDue, netSalary
+      baseSalary, baseSalaryDisplay, hourlyRate, ot1Amount, ot15FridayAmount, otAmount, lateAmount, absentAmount,
+      transportAllowance, otherAllowances, advanceDue, deductionDue, roundingAdjustment, netSalary
     };
   });
 }
@@ -414,6 +421,12 @@ function renderColsPanel(){
 }
 
 function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '<span style="color:#c15b4f;font-weight:700;" title="قيمة غير محسوبة - فيه مشكلة في البيانات">⚠ خطأ</span>'; return (Math.round(n*100)/100).toLocaleString(); }
+
+const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function currentMonthLabel(){
+  const now = new Date();
+  return ARABIC_MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+}
 
 function renderStats(){
   const totalNet = reportRows.reduce((s,r)=>s+r.netSalary,0);
@@ -482,13 +495,12 @@ document.getElementById('printBtn').onclick = ()=>{
   if(!selectedCodes.size){ alert('حدد موظف واحد أو اتنين على الأكثر للطباعة'); return; }
   if(selectedCodes.size > 2){ alert('تقدر تطبع موظفين بحد أقصى في نفس الصفحة'); return; }
   const rows = reportRows.filter(r=>selectedCodes.has(r.code));
-  const periodLabel = prompt('اسم/شهر التقرير ده (هيظهر على الكشف):', '') || '';
-  printPayslips(rows, periodLabel);
+  printPayslips(rows, currentMonthLabel());
 };
 
 document.getElementById('closeMonthBtn').onclick = async ()=>{
   if(!reportRows.length){ alert('مفيش بيانات لتقفيلها'); return; }
-  const label = prompt('اسم/شهر التقرير ده (مثلاً: يوليو 2026):', '');
+  const label = prompt('اسم/شهر التقرير ده:', currentMonthLabel());
   if(!label) return;
   if(!confirm(`هيتم أرشفة تقرير "${label}" ومسح بيانات الحضور الحالية عشان تبدأ الشهر الجديد. متأكد؟`)) return;
 
@@ -523,13 +535,13 @@ document.getElementById('closeMonthBtn').onclick = async ()=>{
 function printPayslips(rows, periodLabel){
   const win = window.open('', '_blank');
   const cardHtml = rows.map(r => payslipCardHtml(r, periodLabel)).join('');
-  const cols = rows.length === 2 ? '1fr 1fr' : '1fr';
   win.document.write(`
     <html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير راتب</title>
     <style>
-      body{ font-family: Tajawal, Arial, sans-serif; margin:0; padding:24px; color:#1a1a1a; }
-      .wrap{ display:grid; grid-template-columns:${cols}; gap:20px; }
-      .card{ border:2px solid #2f6fb0; border-radius:4px; overflow:hidden; }
+      @page{ size: A4 landscape; margin: 8mm; }
+      body{ font-family: Tajawal, Arial, sans-serif; margin:0; padding:0; color:#1a1a1a; }
+      .wrap{ display:flex; justify-content:center; gap:6mm; }
+      .card{ border:2px solid #2f6fb0; border-radius:4px; overflow:hidden; width:148mm; min-height:195mm; box-sizing:border-box; }
       .letterhead{
         display:flex; justify-content:space-between; align-items:center;
         padding:10px 16px; border-bottom:2px solid #2f6fb0;
@@ -560,7 +572,6 @@ function printPayslips(rows, periodLabel){
       .net .amount{ font-family:'Courier New',monospace; text-decoration:underline; }
       .sig{ margin:14px 16px 18px; display:flex; justify-content:space-between; font-size:11px; color:#555; }
       .sig div{ border-top:1px solid #999; padding-top:6px; width:40%; text-align:center; }
-      @media print{ body{ padding:10px; } }
     </style></head>
     <body>
       <div class="wrap">${cardHtml}</div>
@@ -571,25 +582,26 @@ function printPayslips(rows, periodLabel){
 }
 
 function payslipCardHtml(r, periodLabel){
-  const totalOtHours = (r.ot1Hours||0) + (r.ot15Hours||0) + (r.fridayOtHours||0);
+  const otHoursForDisplay = (r.ot15Hours||0) + (r.fridayOtHours||0);
+  const roundPositive = r.roundingAdjustment > 0 ? r.roundingAdjustment : 0;
+  const roundNegative = r.roundingAdjustment < 0 ? -r.roundingAdjustment : 0;
   const credits = [
-    { label:'عدد ايام الاضافي', val:'—' },
-    { label:'قيمة الاضافي', val:'—' },
-    { label:'عدد ساعات الاضافي', val: Math.round(totalOtHours*10)/10 },
-    { label:'قيمة الساعات الاضافية', val: r.otAmount },
+    { label:'عدد ساعات الاضافي (×1.5/جمعة)', val: Math.round(otHoursForDisplay*10)/10 },
+    { label:'قيمة الساعات الاضافية', val: r.ot15FridayAmount },
     { label:'بدل مواصلات', val: r.transportAllowance },
-    { label:'بدلات اخرى', val: r.otherAllowances }
+    { label:'بدلات اخرى', val: r.otherAllowances },
+    { label:'تقريب الصافي', val: roundPositive || '—' }
   ];
   const debits = [
     { label:'السلف', val: r.advanceDue },
-    { label:'خصم دفعات', val: 0 },
+    { label:'خصم يدوي', val: r.deductionDue },
     { label:'عدد ايام الغياب', val: r.daysAbsent },
     { label:'قيمة الغياب', val: r.absentAmount },
-    { label:'ساعات الخصم', val: 0 },
-    { label:'قيمة الساعات المخصومة', val: r.lateAmount }
+    { label:'خصم التأخير', val: r.lateAmount },
+    { label:'تقريب الصافي', val: roundNegative || '—' }
   ];
-  const creditTotal = r.otAmount + r.transportAllowance + r.otherAllowances;
-  const debitTotal = r.advanceDue + r.absentAmount + r.lateAmount + r.deductionDue;
+  const creditTotal = r.ot15FridayAmount + r.transportAllowance + r.otherAllowances + roundPositive;
+  const debitTotal = r.advanceDue + r.absentAmount + r.lateAmount + r.deductionDue + roundNegative;
   const rowCount = Math.max(credits.length, debits.length);
   let bodyRows = '';
   for(let i=0;i<rowCount;i++){
@@ -611,7 +623,7 @@ function payslipCardHtml(r, periodLabel){
       <div class="title">كشف رواتب تفصيلي ${periodLabel ? 'عن ' + periodLabel : ''}</div>
       <table class="meta">
         <tr><td class="mlabel">الموظف:</td><td>${r.name}</td></tr>
-        <tr><td class="mlabel">اساسي الراتب:</td><td>${fmt(r.baseSalary)}</td></tr>
+        <tr><td class="mlabel">اساسي الراتب:</td><td>${fmt(r.baseSalaryDisplay)}</td></tr>
       </table>
       <table class="ledger">
         <tr><th class="credit-h" colspan="2">المستحقات</th><th class="debit-h" colspan="2">الاستقطاعات</th></tr>

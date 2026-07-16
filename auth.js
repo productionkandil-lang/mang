@@ -19,7 +19,7 @@ const PAGE_PERMS = {
   advances:   { admin:'edit', finance:'edit', data_entry:'none' },
   holidays:   { admin:'edit', finance:'none', data_entry:'edit' },
   schedule:   { admin:'edit', finance:'none', data_entry:'edit' },
-  van:        { admin:'edit', finance:'view', data_entry:'none' },
+  van:        { admin:'edit', finance:'view', data_entry:'edit' },
   closing:    { admin:'edit', finance:'view', data_entry:'none' },
   history:    { admin:'edit', finance:'view', data_entry:'none' },
   users:      { admin:'edit', finance:'none', data_entry:'none' },

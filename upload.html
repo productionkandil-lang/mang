@@ -253,6 +253,10 @@ function officialStartFor(sys, dateKeyStr){
   const override = scheduleOverrides.find(s => s.systemId===sys.id && dateKeyStr>=s.startDate && dateKeyStr<=s.endDate);
   return override ? override.officialStartTime : sys.officialStartTime;
 }
+function dailyWorkHoursOverrideFor(sys, dateKeyStr){
+  const override = scheduleOverrides.find(s => s.systemId===sys.id && dateKeyStr>=s.startDate && dateKeyStr<=s.endDate && s.dailyWorkHours!=null);
+  return override ? override.dailyWorkHours : null;
+}
 
 function toast(msg){
   const t = document.getElementById('toast');
@@ -642,8 +646,9 @@ async function processMonth(){
     let workedH = workedHoursOf(r);
     if(!workedH || workedH < 0) workedH = 0;
 
-    const baseHours = sys.overtime.baseHours!=null ? sys.overtime.baseHours
-      : (sys.overtime.thresholdHours!=null ? sys.overtime.thresholdHours - (sys.overtime.rate1MaxHours||1.5) : 8);
+    const baseHours = dailyWorkHoursOverrideFor(sys, r.dateKey) != null ? dailyWorkHoursOverrideFor(sys, r.dateKey)
+      : (sys.overtime.baseHours!=null ? sys.overtime.baseHours
+      : (sys.overtime.thresholdHours!=null ? sys.overtime.thresholdHours - (sys.overtime.rate1MaxHours||1.5) : 8));
     const rate1Max = sys.overtime.rate1MaxHours!=null ? sys.overtime.rate1MaxHours : 1.5;
     const threshold = baseHours + rate1Max;
 

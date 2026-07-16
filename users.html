@@ -108,9 +108,10 @@
     <h3>إضافة مستخدم جديد</h3>
     <div class="hint">
       لازم بريد إلكتروني حقيقي لكل شخص (عشان يقدر يستخدم "نسيت الباسورد" بنفسه لاحقًا).<br>
-      <b>مدخل بيانات:</b> يسجل الحضور، يعدل بيانات الشهر، يرفع ملف البصمة، ويعدل أنظمة العمل — بدون رؤية أي مرتبات.<br>
+      <b>مدخل بيانات:</b> يسجل الحضور، يعدل بيانات الشهر، يرفع ملف البصمة، ويعدل أنظمة العمل وعربية الوردية — بدون رؤية أي مرتبات.<br>
       <b>مطّلع على الفلوس:</b> يشوف المرتبات ويعدل في السلف والخصومات وعربية الوردية وتقفيل الشهر — بدون تعديل أنظمة العمل.<br>
-      <b>مدير النظام:</b> صلاحية كاملة على كل الصفحات.
+      <b>مدير النظام:</b> صلاحية كاملة على كل الصفحات.<br>
+      <b>ملحوظة:</b> "إلغاء الصلاحية" بيمنع الشخص من الدخول لأي بيانات فورًا، لكن حساب الدخول (الإيميل) بيفضل موجود في نظام الدخول — لو محتاج تمسحه نهائيًا كلمني.
     </div>
     <div class="error" id="errBox"></div>
     <div class="form-grid">
@@ -143,7 +144,7 @@
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th>اسم العرض</th><th>البريد الإلكتروني</th><th>الدور</th></tr>
+        <tr><th>اسم العرض</th><th>البريد الإلكتروني</th><th>الدور</th><th></th></tr>
       </thead>
       <tbody id="usersBody"></tbody>
     </table>
@@ -167,23 +168,61 @@ function showError(msg){
 
 async function renderUsers(){
   const body = document.getElementById('usersBody');
-  body.innerHTML = '<tr><td colspan="3">جاري التحميل...</td></tr>';
+  body.innerHTML = '<tr><td colspan="4">جاري التحميل...</td></tr>';
   try{
     const snap = await firebase.firestore().collection('users').get();
     body.innerHTML = '';
+    const myUid = Auth.getSession().uid;
+    const adminCount = snap.docs.filter(d=>d.data().role==='admin').length;
     snap.forEach(doc=>{
       const u = doc.data();
+      const uid = doc.id;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${u.name || '—'}</td>
         <td class="mono">${u.email || '—'}</td>
-        <td><span class="role-badge">${Auth.ROLE_LABELS[u.role] || u.role}</span></td>
+        <td>
+          <select class="cell-input roleSelect" data-uid="${uid}">
+            <option value="data_entry" ${u.role==='data_entry'?'selected':''}>مدخل بيانات</option>
+            <option value="finance" ${u.role==='finance'?'selected':''}>مطّلع على الفلوس</option>
+            <option value="admin" ${u.role==='admin'?'selected':''}>مدير النظام</option>
+          </select>
+        </td>
+        <td><button class="del-btn" data-uid="${uid}" data-role="${u.role}" data-name="${u.name||u.email}" title="إلغاء صلاحيات هذا المستخدم">إلغاء الصلاحية</button></td>
       `;
       body.appendChild(tr);
     });
-    if(snap.empty) body.innerHTML = '<tr><td colspan="3">مفيش مستخدمين لسه</td></tr>';
+    if(snap.empty) body.innerHTML = '<tr><td colspan="4">مفيش مستخدمين لسه</td></tr>';
+
+    body.querySelectorAll('.roleSelect').forEach(sel=>{
+      sel.onchange = async e=>{
+        const uid = e.target.dataset.uid;
+        const newRole = e.target.value;
+        if(uid === myUid && newRole !== 'admin'){
+          alert('متقدرش تشيل صلاحية الأدمن من نفسك وانت داخل بيها دلوقتي');
+          renderUsers();
+          return;
+        }
+        await firebase.firestore().collection('users').doc(uid).update({ role: newRole });
+        toast('تم تحديث الدور');
+        renderUsers();
+      };
+    });
+    body.querySelectorAll('.del-btn').forEach(btn=>{
+      btn.onclick = async e=>{
+        const uid = e.target.dataset.uid;
+        const role = e.target.dataset.role;
+        const name = e.target.dataset.name;
+        if(uid === myUid){ alert('متقدرش تلغي صلاحيتك من نفسك'); return; }
+        if(role==='admin' && adminCount<=1){ alert('لازم يفضل أدمن واحد على الأقل'); return; }
+        if(!confirm('هيتم إلغاء دخول "'+name+'" على النظام نهائيًا. متأكد؟')) return;
+        await firebase.firestore().collection('users').doc(uid).delete();
+        toast('تم إلغاء الصلاحية');
+        renderUsers();
+      };
+    });
   }catch(err){
-    body.innerHTML = '<tr><td colspan="3">تعذر تحميل القائمة: '+err.message+'</td></tr>';
+    body.innerHTML = '<tr><td colspan="4">تعذر تحميل القائمة: '+err.message+'</td></tr>';
   }
 }
 

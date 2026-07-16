@@ -145,6 +145,7 @@
           <th>نشط</th>
           <th class="sortable" data-sort="code">الكود <span class="sort-arrow" id="arrow-code"></span></th>
           <th class="sortable" data-sort="name">الاسم <span class="sort-arrow" id="arrow-name"></span></th>
+          <th>الاسم بالعربي</th>
           <th>النظام الافتراضي</th>
           <th class="money-col">المرتب الأساسي</th>
           <th class="money-col">بدل المواصلات اليومي</th>
@@ -272,6 +273,7 @@ function renderTable(){
       <td><input type="checkbox" class="active-toggle" data-id="${emp.id}" ${emp.active?'checked':''}></td>
       <td class="code">${emp.code || '—'}</td>
       <td class="name-cell">${emp.name}</td>
+      <td><input type="text" class="cell-input arabicNameInput" data-id="${emp.id}" value="${emp.arabicName||''}" placeholder="اختياري"></td>
       <td>
         <select class="cell-input sysSelect" data-id="${emp.id}">
           <option value="">— بدون —</option>
@@ -292,6 +294,13 @@ function renderTable(){
       const emp = employees.find(x=>x.id===e.target.dataset.id);
       emp.active = e.target.checked;
       saveEmployees(employees); renderStats();
+    };
+  });
+  body.querySelectorAll('.arabicNameInput').forEach(inp=>{
+    inp.onchange = e=>{
+      const emp = employees.find(x=>x.id===e.target.dataset.id);
+      emp.arabicName = e.target.value.trim();
+      saveEmployees(employees);
     };
   });
   body.querySelectorAll('.sysSelect').forEach(sel=>{

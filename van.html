@@ -28,7 +28,7 @@
   nav a{color:var(--text-dim); text-decoration:none; margin-inline-start:10px; font-size:12px; padding:6px 3px; border-bottom:2px solid transparent;}
   nav a:hover{color:var(--brass-bright);}
   nav a.active{color:var(--brass-bright); border-color:var(--brass);}
-  main{max-width:1000px; margin:0 auto; padding:28px 24px 80px;}
+  main{max-width:1100px; margin:0 auto; padding:28px 24px 80px;}
 
   .stats{display:flex; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
   .stat{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 18px; min-width:140px;}
@@ -39,15 +39,21 @@
   .card::before, .card::after{content:''; position:absolute; width:5px; height:5px; border-radius:50%; background:var(--brass); opacity:.5;}
   .card::before{top:10px; right:10px;} .card::after{bottom:10px; left:10px;}
   .card h3{font-family:'Cairo',sans-serif; font-size:15px; margin:0 0 16px; color:var(--brass-bright); padding-bottom:10px; border-bottom:1px solid var(--border);}
+  .hint{font-size:12px; color:var(--text-dim); margin-bottom:14px; line-height:1.8;}
 
-  .form-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; align-items:end;}
+  .form-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; align-items:end;}
   .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
-  .field input{
+  .field input, .field select{
     width:100%; background:var(--bg-raised); border:1px solid var(--border); border-radius:8px;
     color:var(--text); padding:9px 11px; font-family:'IBM Plex Mono',monospace; font-size:13px;
   }
-  .field input:focus{outline:none; border-color:var(--brass);}
+  .field input:focus, .field select:focus{outline:none; border-color:var(--brass);}
   .field .hint{font-size:11px; color:var(--text-dim); margin-top:5px;}
+  .days-check{display:flex; gap:6px; flex-wrap:wrap;}
+  .days-check label{
+    display:flex; align-items:center; gap:4px; background:var(--bg-raised); border:1px solid var(--border);
+    border-radius:6px; padding:5px 8px; font-size:11.5px; cursor:pointer;
+  }
   button{
     font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--border);
     background:var(--surface-2); color:var(--text); padding:9px 16px; font-size:13px; font-weight:500;
@@ -55,6 +61,21 @@
   button:hover{border-color:var(--brass);}
   button.primary{background:var(--brass); border-color:var(--brass); color:#1a1410; font-weight:700;}
   button.primary:hover{background:var(--brass-bright);}
+
+  .van-list{display:flex; flex-direction:column; gap:10px; margin-bottom:16px;}
+  .van-row{
+    display:flex; align-items:center; gap:12px; background:var(--bg-raised); border:1px solid var(--border);
+    border-radius:10px; padding:10px 14px; flex-wrap:wrap;
+  }
+  .van-row .van-name{font-weight:700; min-width:110px;}
+  .van-row .van-meta{font-size:11.5px; color:var(--text-dim); flex:1;}
+  .van-row .del-van-btn{background:transparent; border:none; color:var(--danger); cursor:pointer; font-size:14px;}
+  .van-tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+  .van-tab{
+    padding:8px 16px; border-radius:20px; border:1px solid var(--border); background:var(--surface-2);
+    cursor:pointer; font-size:13px; color:var(--text-dim);
+  }
+  .van-tab.active{background:var(--brass); border-color:var(--brass); color:#1a1410; font-weight:700;}
 
   .table-wrap{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
   table{width:100%; border-collapse:collapse; background:var(--surface);}
@@ -66,6 +87,7 @@
   tbody tr:last-child td{border-bottom:none;}
   td.mono{font-family:'IBM Plex Mono',monospace;}
   td.total{color:var(--brass-bright); font-weight:700; font-family:'IBM Plex Mono',monospace;}
+  td.holiday-tag{color:var(--warn); font-size:11px;}
   input.edit-input{
     width:80px; background:var(--bg-raised); border:1px solid var(--border); border-radius:6px;
     color:var(--text); padding:6px 8px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;
@@ -91,7 +113,7 @@
 <header>
   <div>
     <h1>GM Marine — عربية الوردية</h1>
-    <div class="tag">سجل يومي لمصاريف عربية نقل العمالة — مبلغ ثابت باليوم + إضافي عند السهر</div>
+    <div class="tag">سجل يومي لمصاريف عربيات نقل العمالة — بيتسجل حضورها تلقائيًا في أيام الشغل</div>
   </div>
   <nav>
     <a href="index.html">الرئيسية</a>
@@ -109,21 +131,43 @@
 </header>
 
 <main>
+  <div class="stats" id="stats"></div>
+
   <div class="card">
-    <h3>الإعدادات</h3>
+    <h3>العربيات</h3>
+    <div class="hint">كل عربية بيتسجل حضورها أوتوماتيك في أيام الشغل بتاعتها (غير أيام الإجازة الأسبوعية) بالمبلغ اليومي المحدد ليها.</div>
+    <div class="van-list" id="vanList"></div>
     <div class="form-grid">
       <div class="field">
-        <label>المبلغ اليومي الثابت</label>
-        <input type="number" id="dailyRateInput">
-        <div class="hint">بيتطبق تلقائيًا على كل يوم تضيفه، وتقدر تعدل عليه لكل يوم لوحده لو حصل فرق</div>
+        <label>اسم العربية</label>
+        <input type="text" id="vanNameInput" placeholder="مثلاً: عربية 1">
+      </div>
+      <div class="field">
+        <label>المبلغ اليومي</label>
+        <input type="number" id="vanRateInput" placeholder="0">
+      </div>
+      <div class="field" style="grid-column:span 2;">
+        <label>أيام الإجازة الأسبوعية</label>
+        <div class="days-check" id="newVanDays">
+          <label><input type="checkbox" value="5" checked> الجمعة</label>
+          <label><input type="checkbox" value="0"> الأحد</label>
+          <label><input type="checkbox" value="1"> الاثنين</label>
+          <label><input type="checkbox" value="2"> الثلاثاء</label>
+          <label><input type="checkbox" value="3"> الأربعاء</label>
+          <label><input type="checkbox" value="4"> الخميس</label>
+          <label><input type="checkbox" value="6"> السبت</label>
+        </div>
+      </div>
+      <div class="field">
+        <button class="primary" id="addVanBtn" style="width:100%;">+ إضافة عربية</button>
       </div>
     </div>
   </div>
 
-  <div class="stats" id="stats"></div>
+  <div class="van-tabs" id="vanTabs"></div>
 
-  <div class="card">
-    <h3>إضافة يوم جديد</h3>
+  <div class="card" id="dayActionsCard" style="display:none;">
+    <h3>إضافة/تعديل يوم</h3>
     <div class="form-grid">
       <div class="field">
         <label>التاريخ</label>
@@ -135,10 +179,10 @@
       </div>
       <div class="field">
         <label>سبب المبلغ الإضافي</label>
-        <input type="text" id="noteInput" placeholder="اختياري — مثلاً: سهر لحد الساعة 2">
+        <input type="text" id="noteInput" placeholder="اختياري">
       </div>
       <div class="field">
-        <button class="primary" id="addBtn" style="width:100%;">إضافة</button>
+        <button class="primary" id="addBtn" style="width:100%;">تسجيل اليوم (حتى لو إجازة)</button>
       </div>
     </div>
   </div>
@@ -154,7 +198,7 @@
       <tbody id="vanBody"></tbody>
     </table>
   </div>
-  <div id="emptyState" class="empty" style="display:none;">مفيش أيام مسجلة لسه</div>
+  <div id="emptyState" class="empty" style="display:none;">مفيش عربيات مضافة لسه — ضيف عربية فوق الأول</div>
 </main>
 
 <div class="toast" id="toast">تم الحفظ</div>
@@ -164,44 +208,119 @@ Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
 
 const SETTINGS_KEY = 'gm_att_van_settings';
 const LOG_KEY = 'gm_att_van_log';
+const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
-async function loadSettings(){ return await DB.dbGetJSON(SETTINGS_KEY, {"dailyRate":0}); }
-async function saveSettings(s){ await DB.dbSetJSON(SETTINGS_KEY, s); }
+async function loadVans(){
+  const raw = await DB.dbGetJSON(SETTINGS_KEY, null);
+  // توافق مع الإعداد القديم (عربية واحدة بمبلغ ثابت)
+  if(!raw){ return []; }
+  if(!Array.isArray(raw)){
+    return raw.dailyRate ? [{ id:'van_legacy', name:'عربية 1', dailyRate: raw.dailyRate||0, weeklyOffDays:[5], excludedDates:[], extraWorkDates:[] }] : [];
+  }
+  raw.forEach(v=>{
+    if(!v.weeklyOffDays) v.weeklyOffDays = [5];
+    if(!v.excludedDates) v.excludedDates = [];
+    if(!v.extraWorkDates) v.extraWorkDates = [];
+  });
+  return raw;
+}
+async function saveVans(v){ await DB.dbSetJSON(SETTINGS_KEY, v); }
 async function loadLog(){ return await DB.dbGetJSON(LOG_KEY, []); }
 async function saveLog(l){ await DB.dbSetJSON(LOG_KEY, l); }
 
-let settings = await loadSettings();
+let vans = await loadVans();
 let log = await loadLog();
+let activeVanId = vans[0]?.id || null;
 let sortField = 'date';
 let sortDir = 'desc';
-
-document.getElementById('dailyRateInput').value = settings.dailyRate || 0;
-document.getElementById('dailyRateInput').onchange = e=>{
-  settings.dailyRate = parseFloat(e.target.value) || 0;
-  saveSettings(settings);
-  toast('تم حفظ المبلغ اليومي');
-};
 
 function toast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 1600);
 }
+function dateStr(d){ return d.toISOString().slice(0,10); }
+
+// ---------- توليد الحضور الأوتوماتيكي لكل عربية عن الشهر الحالي حتى النهارده ----------
+async function autoGenerate(){
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  let changed = false;
+  vans.forEach(van=>{
+    for(let d = new Date(start); d <= today; d.setDate(d.getDate()+1)){
+      const ds = dateStr(d);
+      const dow = d.getDay();
+      const isWeeklyOff = (van.weeklyOffDays||[]).includes(dow);
+      const isExcluded = (van.excludedDates||[]).includes(ds);
+      const isExtraWork = (van.extraWorkDates||[]).includes(ds);
+      const shouldExist = (!isWeeklyOff && !isExcluded) || (isWeeklyOff && isExtraWork);
+      const exists = log.some(e=>e.vanId===van.id && e.date===ds);
+      if(shouldExist && !exists){
+        log.push({ id:'van_'+van.id+'_'+ds, vanId:van.id, date:ds, baseAmount: van.dailyRate||0, extraAmount:0, note:'' });
+        changed = true;
+      }
+    }
+  });
+  if(changed) await saveLog(log);
+}
+await autoGenerate();
 
 function renderStats(){
   const total = log.reduce((s,e)=>s+e.baseAmount+e.extraAmount,0);
   const totalExtra = log.reduce((s,e)=>s+e.extraAmount,0);
   document.getElementById('stats').innerHTML = `
-    <div class="stat"><div class="n">${log.length}</div><div class="l">يوم مسجل</div></div>
+    <div class="stat"><div class="n">${vans.length}</div><div class="l">عدد العربيات</div></div>
+    <div class="stat"><div class="n">${log.length}</div><div class="l">يوم مسجل (كل العربيات)</div></div>
     <div class="stat"><div class="n">${total.toLocaleString()}</div><div class="l">إجمالي المصروف</div></div>
     <div class="stat"><div class="n">${totalExtra.toLocaleString()}</div><div class="l">إجمالي المبالغ الإضافية</div></div>
   `;
 }
 
+function renderVanList(){
+  const box = document.getElementById('vanList');
+  box.innerHTML = '';
+  vans.forEach(v=>{
+    const offNames = (v.weeklyOffDays||[]).map(d=>dayNames[d]).join('، ') || 'بدون';
+    const el = document.createElement('div');
+    el.className = 'van-row';
+    el.innerHTML = `
+      <span class="van-name">${v.name}</span>
+      <span class="van-meta">المبلغ اليومي: ${v.dailyRate||0} — إجازة أسبوعية: ${offNames}</span>
+      <button class="del-van-btn" data-id="${v.id}" title="حذف العربية">✕ حذف العربية</button>
+    `;
+    box.appendChild(el);
+  });
+  box.querySelectorAll('.del-van-btn').forEach(btn=>{
+    btn.onclick = async e=>{
+      const id = e.target.dataset.id;
+      if(!confirm('حذف العربية دي؟ (سجلها التاريخي هيفضل موجود لكن مش هيتحدث تلقائي بعد كده)')) return;
+      vans = vans.filter(v=>v.id!==id);
+      await saveVans(vans);
+      if(activeVanId===id) activeVanId = vans[0]?.id || null;
+      renderAll();
+      toast('تم حذف العربية');
+    };
+  });
+}
+
+function renderTabs(){
+  const box = document.getElementById('vanTabs');
+  box.innerHTML = '';
+  vans.forEach(v=>{
+    const tab = document.createElement('div');
+    tab.className = 'van-tab' + (v.id===activeVanId ? ' active' : '');
+    tab.textContent = v.name;
+    tab.onclick = ()=>{ activeVanId = v.id; renderAll(); };
+    box.appendChild(tab);
+  });
+  document.getElementById('dayActionsCard').style.display = activeVanId ? 'block' : 'none';
+}
+
 function renderTable(){
   const body = document.getElementById('vanBody');
   const empty = document.getElementById('emptyState');
-  if(!log.length){
+  const vanEntries = log.filter(e=>e.vanId===activeVanId);
+  if(!vans.length){
     document.getElementById('vanTable').style.display='none';
     empty.style.display='block';
     return;
@@ -209,7 +328,8 @@ function renderTable(){
   document.getElementById('vanTable').style.display='table';
   empty.style.display='none';
 
-  const list = log.map((e,i)=>({...e,_idx:i})).sort((a,b)=>{
+  const van = vans.find(v=>v.id===activeVanId);
+  const list = vanEntries.map(e=>({...e, _idx: log.indexOf(e)})).sort((a,b)=>{
     const cmp = a[sortField] > b[sortField] ? 1 : (a[sortField] < b[sortField] ? -1 : 0);
     return sortDir==='asc' ? cmp : -cmp;
   });
@@ -218,14 +338,16 @@ function renderTable(){
 
   body.innerHTML = '';
   list.forEach(e=>{
+    const dow = new Date(e.date).getDay();
+    const isWeeklyOff = van && (van.weeklyOffDays||[]).includes(dow);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="mono">${e.date}</td>
+      <td class="mono">${e.date} ${isWeeklyOff ? '<span class="holiday-tag">(إجازة اشتغلت فيها)</span>' : ''}</td>
       <td class="mono"><input type="number" class="edit-input edit-base" data-idx="${e._idx}" value="${e.baseAmount}"></td>
       <td class="mono"><input type="number" class="edit-input edit-extra" data-idx="${e._idx}" value="${e.extraAmount}"></td>
       <td class="total">${(e.baseAmount+e.extraAmount).toLocaleString()}</td>
       <td><input type="text" class="edit-input edit-note" data-idx="${e._idx}" value="${e.note||''}" placeholder="—"></td>
-      <td><button class="del-btn" data-idx="${e._idx}">✕</button></td>
+      <td><button class="del-btn" data-idx="${e._idx}" data-date="${e.date}">✕</button></td>
     `;
     body.appendChild(tr);
   });
@@ -240,13 +362,31 @@ function renderTable(){
     inp.onchange = ev=>{ log[ev.target.dataset.idx].note = ev.target.value.trim(); saveLog(log); };
   });
   body.querySelectorAll('.del-btn').forEach(btn=>{
-    btn.onclick = ev=>{
-      if(!confirm('حذف هذا اليوم؟')) return;
-      log.splice(ev.target.dataset.idx,1);
-      saveLog(log); renderStats(); renderTable();
+    btn.onclick = async ev=>{
+      if(!confirm('حذف هذا اليوم؟ (مش هيترسجل تاني تلقائي)')) return;
+      const idx = parseInt(ev.target.dataset.idx);
+      const date = ev.target.dataset.date;
+      log.splice(idx,1);
+      const van = vans.find(v=>v.id===activeVanId);
+      if(van){
+        if(!van.excludedDates) van.excludedDates = [];
+        if(!van.excludedDates.includes(date)) van.excludedDates.push(date);
+        // لو كان يوم إجازة اشتغل فيها واتحذف، شيله من extraWorkDates كمان
+        if(van.extraWorkDates){ van.extraWorkDates = van.extraWorkDates.filter(d=>d!==date); }
+        await saveVans(vans);
+      }
+      await saveLog(log);
+      renderStats(); renderTable();
       toast('تم الحذف');
     };
   });
+}
+
+function renderAll(){
+  renderStats();
+  renderVanList();
+  renderTabs();
+  renderTable();
 }
 
 document.querySelectorAll('th.sortable').forEach(th=>{
@@ -257,14 +397,43 @@ document.querySelectorAll('th.sortable').forEach(th=>{
   };
 });
 
-document.getElementById('addBtn').onclick = ()=>{
+document.getElementById('addVanBtn').onclick = async ()=>{
+  const name = document.getElementById('vanNameInput').value.trim();
+  const rate = parseFloat(document.getElementById('vanRateInput').value) || 0;
+  const offDays = Array.from(document.querySelectorAll('#newVanDays input:checked')).map(c=>parseInt(c.value));
+  if(!name){ alert('اكتب اسم العربية'); return; }
+  const van = { id:'van_'+Date.now().toString(36), name, dailyRate: rate, weeklyOffDays: offDays, excludedDates:[], extraWorkDates:[] };
+  vans.push(van);
+  await saveVans(vans);
+  activeVanId = van.id;
+  await autoGenerate();
+  document.getElementById('vanNameInput').value = '';
+  document.getElementById('vanRateInput').value = '';
+  renderAll();
+  toast('تم إضافة العربية');
+};
+
+document.getElementById('addBtn').onclick = async ()=>{
   const date = document.getElementById('dateInput').value;
   const extra = parseFloat(document.getElementById('extraInput').value) || 0;
   const note = document.getElementById('noteInput').value.trim();
   if(!date){ alert('حدد التاريخ'); return; }
-  if(log.some(e=>e.date===date)){ alert('اليوم ده متسجل بالفعل — عدّل عليه من الجدول تحت'); return; }
-  log.push({ id:'van_'+Date.now().toString(36), date, baseAmount: settings.dailyRate||0, extraAmount: extra, note });
-  saveLog(log);
+  if(!activeVanId){ alert('اختار عربية الأول'); return; }
+  if(log.some(e=>e.vanId===activeVanId && e.date===date)){ alert('اليوم ده متسجل بالفعل لنفس العربية — عدّل عليه من الجدول تحت'); return; }
+  const van = vans.find(v=>v.id===activeVanId);
+  const dow = new Date(date).getDay();
+  const isWeeklyOff = van && (van.weeklyOffDays||[]).includes(dow);
+  if(isWeeklyOff){
+    if(!van.extraWorkDates) van.extraWorkDates = [];
+    if(!van.extraWorkDates.includes(date)) van.extraWorkDates.push(date);
+    if(van.excludedDates) van.excludedDates = van.excludedDates.filter(d=>d!==date);
+    await saveVans(vans);
+  } else if(van && van.excludedDates && van.excludedDates.includes(date)){
+    van.excludedDates = van.excludedDates.filter(d=>d!==date);
+    await saveVans(vans);
+  }
+  log.push({ id:'van_'+activeVanId+'_'+date+'_'+Date.now().toString(36), vanId:activeVanId, date, baseAmount: van ? (van.dailyRate||0) : 0, extraAmount: extra, note });
+  await saveLog(log);
   document.getElementById('dateInput').value = '';
   document.getElementById('extraInput').value = '';
   document.getElementById('noteInput').value = '';
@@ -272,8 +441,7 @@ document.getElementById('addBtn').onclick = ()=>{
   toast('تم الإضافة');
 };
 
-renderStats();
-renderTable();
+renderAll();
 
 Auth.finalizeAuthUI();
 

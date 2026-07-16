@@ -97,7 +97,7 @@
 <main>
   <div class="card">
     <h3>إضافة تغيير مؤقت في ميعاد الحضور</h3>
-    <div class="hint">خلال الفترة المحددة، أي حساب لنظام العمل ده هياخد الميعاد الجديد بدل الميعاد الرسمي الأساسي المسجل في صفحة أنظمة العمل. برّه الفترة دي، بيرجع الميعاد الأساسي تلقائيًا.</div>
+    <div class="hint">خلال الفترة المحددة، أي حساب لنظام العمل ده هياخد الميعاد الجديد وعدد ساعات العمل اليومية الجديدة (لو محددة) بدل الأساسي المسجل في صفحة أنظمة العمل. برّه الفترة دي، بيرجعوا تلقائيًا. <b>ملحوظة:</b> تغيير ساعات العمل اليومية (زي رمضان) بيغيّر عدد الساعات المطلوبة للحضور الكامل بس مش بيغيّر سعر الساعة — سعر الساعة بيفضل محسوب على أساس الشهر ٣٠ يوم و٨ ساعات دايمًا.</div>
     <div class="form-grid">
       <div class="field">
         <label>النظام</label>
@@ -106,6 +106,10 @@
       <div class="field">
         <label>الميعاد الجديد</label>
         <input type="time" id="timeInput">
+      </div>
+      <div class="field">
+        <label>ساعات العمل اليومية (اختياري)</label>
+        <input type="number" id="hoursInput" step="0.5" placeholder="مثلاً 7 — سيبها فاضية لعدم التغيير">
       </div>
       <div class="field">
         <label>من تاريخ</label>
@@ -128,7 +132,7 @@
   <div class="table-wrap">
     <table id="schTable">
       <thead>
-        <tr><th>النظام</th><th>الميعاد الجديد</th><th>من</th><th>لغاية</th><th>ملاحظة</th><th></th></tr>
+        <tr><th>النظام</th><th>الميعاد الجديد</th><th>ساعات العمل</th><th>من</th><th>لغاية</th><th>ملاحظة</th><th></th></tr>
       </thead>
       <tbody id="schBody"></tbody>
     </table>
@@ -182,6 +186,7 @@ function renderTable(){
     tr.innerHTML = `
       <td>${sys ? sys.name : '—'}</td>
       <td class="mono">${s.officialStartTime}</td>
+      <td class="mono">${s.dailyWorkHours!=null ? s.dailyWorkHours : '—'}</td>
       <td class="mono">${s.startDate}</td>
       <td class="mono">${s.endDate}</td>
       <td>${s.note||'—'}</td>
@@ -204,6 +209,8 @@ function renderTable(){
 document.getElementById('addBtn').onclick = ()=>{
   const systemId = parseInt(document.getElementById('sysSelect').value);
   const officialStartTime = document.getElementById('timeInput').value;
+  const hoursVal = document.getElementById('hoursInput').value;
+  const dailyWorkHours = hoursVal ? parseFloat(hoursVal) : null;
   const startDate = document.getElementById('startInput').value;
   const endDate = document.getElementById('endInput').value;
   const note = document.getElementById('noteInput').value.trim();
@@ -211,9 +218,10 @@ document.getElementById('addBtn').onclick = ()=>{
   if(!systemId || !officialStartTime || !startDate || !endDate){ alert('املأ كل الحقول المطلوبة'); return; }
   if(endDate < startDate){ alert('تاريخ النهاية قبل تاريخ البداية'); return; }
 
-  schedules.push({ id:'sch_'+Date.now().toString(36), systemId, officialStartTime, startDate, endDate, note });
+  schedules.push({ id:'sch_'+Date.now().toString(36), systemId, officialStartTime, dailyWorkHours, startDate, endDate, note });
   saveSchedules(schedules);
   document.getElementById('timeInput').value = '';
+  document.getElementById('hoursInput').value = '';
   document.getElementById('startInput').value = '';
   document.getElementById('endInput').value = '';
   document.getElementById('noteInput').value = '';

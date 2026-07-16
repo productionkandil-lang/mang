@@ -33,7 +33,8 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (isDataEntry() && key in [
               'gm_att_employees_public','gm_att_systems','gm_att_raw','gm_att_processed',
-              'gm_att_report_cols','gm_att_holidays','gm_att_schedule_overrides'
+              'gm_att_report_cols','gm_att_holidays','gm_att_schedule_overrides',
+              'gm_att_van_settings','gm_att_van_log'
             ])
         || (isFinance() && key in [
               'gm_att_employees_public','gm_att_employees_money','gm_att_systems',
@@ -43,7 +44,8 @@ service cloud.firestore {
       allow write: if isAdmin()
         || (isDataEntry() && key in [
               'gm_att_employees_public','gm_att_systems','gm_att_raw','gm_att_processed',
-              'gm_att_report_cols','gm_att_holidays','gm_att_schedule_overrides'
+              'gm_att_report_cols','gm_att_holidays','gm_att_schedule_overrides',
+              'gm_att_van_settings','gm_att_van_log'
             ])
         || (isFinance() && key == 'gm_att_advances');
     }

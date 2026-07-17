@@ -584,8 +584,8 @@ async function processMonth(){
   const missingDayRows = generateMissingDayRows();
   if(missingDayRows.length){
     rawRows = rawRows.concat(missingDayRows);
-    await DB.dbSetJSON(RAW_KEY, rawRows);
   }
+  await DB.dbSetJSON(RAW_KEY, rawRows); // نحفظ دايمًا عشان "حضور تعديل نظام" يبقى محدّث في صفحة بيانات الشهر
   window._autoFilledCount = missingDayRows.length;
   const workingRows = rawRows;
 

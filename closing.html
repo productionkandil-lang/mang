@@ -218,7 +218,8 @@ const COLUMN_DEFS = [
   { key:'lateMinutes', label:'دقائق التأخير', default:false },
   { key:'baseSalaryDisplay', label:'المرتب الأساسي (شامل أوفرتايم ×1)', default:true },
   { key:'hourlyRate', label:'أجر الساعة', default:false },
-  { key:'otAmount', label:'قيمة الأوفرتايم', default:true },
+  { key:'ot1Amount', label:'قيمة الأوفرتايم ×1', default:false },
+  { key:'ot15FridayAmount', label:'قيمة الأوفرتايم ×1.5/الجمعة', default:true },
   { key:'lateAmount', label:'خصم التأخير', default:true },
   { key:'absentAmount', label:'خصم الغياب', default:true },
   { key:'transportAllowance', label:'بدل مواصلات', default:true },
@@ -356,6 +357,12 @@ function computeAbsentAmount(res, emp, sys, baseSalary){
   return deductDays * dailyRate;
 }
 
+function formatHoursLabel(hours){
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  return h + ':' + String(m).padStart(2,'0');
+}
+
 function buildReportRows(){
   if(!processed || !processed.results) return [];
   return processed.results.map(res=>{
@@ -369,6 +376,9 @@ function buildReportRows(){
     const otAmount = ot1Amount + ot15FridayAmount;
     // "أساسي الراتب" المعروض = المرتب الأساسي + الأوفرتايم ساعة بساعة (×1) فقط
     const baseSalaryDisplay = baseSalary + ot1Amount;
+    // ساعات العمل اليومية المعروضة = الساعات العادية + سقف الأوفرتايم ×1 (إعداد ثابت في النظام)
+    const dailyHours = sys ? (sys.overtime.baseHours||0) + (sys.overtime.rate1MaxHours||0) : 0;
+    const dailyHoursLabel = formatHoursLabel(dailyHours);
 
     const lateAmount = res.lateMinutes ? res.lateMinutes * (hourlyRate/60) : 0;
     const absentAmount = computeAbsentAmount(res, emp, sys||{deductions:{enabled:false}}, baseSalary);
@@ -392,7 +402,7 @@ function buildReportRows(){
       daysPresent: res.daysPresent, daysAbsent: res.daysAbsent,
       regularHours: res.regularHours, ot1Hours: res.ot1Hours, ot15Hours: res.ot15Hours, fridayOtHours: res.fridayOtHours,
       lateMinutes: res.lateMinutes,
-      baseSalary, baseSalaryDisplay, hourlyRate, ot1Amount, ot15FridayAmount, otAmount, lateAmount, absentAmount,
+      baseSalary, baseSalaryDisplay, dailyHoursLabel, hourlyRate, ot1Amount, ot15FridayAmount, otAmount, lateAmount, absentAmount,
       transportAllowance, otherAllowances, advanceDue, deductionDue, roundingAdjustment, netSalary
     };
   });
@@ -555,6 +565,7 @@ function printPayslips(rows, periodLabel){
       .meta{ width:100%; border-collapse:collapse; }
       .meta td{ padding:7px 12px; font-size:12.5px; border-bottom:1px solid #2f6fb0; }
       .meta td.mlabel{ font-weight:700; width:35%; border-inline-end:1px solid #2f6fb0; }
+      .meta tr.subtotal td{ font-weight:800; background:#eef3f8; }
       .ledger{ width:100%; border-collapse:collapse; }
       .ledger th, .ledger td{ padding:7px 8px; font-size:12px; text-align:center; border:1px solid #2f6fb0; }
       .ledger th.credit-h{ background:#c8e6c9; font-weight:800; font-size:13px; }
@@ -623,7 +634,9 @@ function payslipCardHtml(r, periodLabel){
       <div class="title">كشف رواتب تفصيلي ${periodLabel ? 'عن ' + periodLabel : ''}</div>
       <table class="meta">
         <tr><td class="mlabel">الموظف:</td><td>${r.name}</td></tr>
-        <tr><td class="mlabel">اساسي الراتب:</td><td>${fmt(r.baseSalaryDisplay)}</td></tr>
+        <tr><td class="mlabel">الراتب الأساسي:</td><td>${fmt(r.baseSalary)}</td></tr>
+        <tr><td class="mlabel">قيمة الأوفرتايم (استكمال ساعات العمل):</td><td>${fmt(r.ot1Amount)}</td></tr>
+        <tr class="subtotal"><td class="mlabel">راتب الشهر لعدد ساعات عمل يومية ${r.dailyHoursLabel}:</td><td>${fmt(r.baseSalaryDisplay)}</td></tr>
       </table>
       <table class="ledger">
         <tr><th class="credit-h" colspan="2">المستحقات</th><th class="debit-h" colspan="2">الاستقطاعات</th></tr>

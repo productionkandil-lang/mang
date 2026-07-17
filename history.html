@@ -132,7 +132,7 @@ const COLUMN_LABELS = {
   code:'الكود', name:'الاسم', system:'النظام', daysPresent:'أيام حضور', daysAbsent:'أيام غياب',
   regularHours:'ساعات عادية', ot1Hours:'أوفرتايم ×1', ot15Hours:'أوفرتايم ×1.5', fridayOtHours:'أوفرتايم الجمعة',
   lateMinutes:'دقائق تأخير', baseSalary:'المرتب الأساسي', baseSalaryDisplay:'المرتب الأساسي (شامل أوفرتايم ×1)',
-  hourlyRate:'أجر الساعة', otAmount:'قيمة الأوفرتايم',
+  hourlyRate:'أجر الساعة', otAmount:'قيمة الأوفرتايم', ot1Amount:'قيمة الأوفرتايم ×1', ot15FridayAmount:'قيمة الأوفرتايم ×1.5/الجمعة',
   lateAmount:'خصم التأخير', absentAmount:'خصم الغياب', transportAllowance:'بدل مواصلات', otherAllowances:'بدلات أخرى',
   advanceDue:'سلفة مستحقة', deductionDue:'خصم يدوي', roundingAdjustment:'تقريب الصافي', netSalary:'الصافي'
 };
@@ -256,6 +256,7 @@ function printPayslips(rows, periodLabel){
       .meta{ width:100%; border-collapse:collapse; }
       .meta td{ padding:7px 12px; font-size:12.5px; border-bottom:1px solid #2f6fb0; }
       .meta td.mlabel{ font-weight:700; width:35%; border-inline-end:1px solid #2f6fb0; }
+      .meta tr.subtotal td{ font-weight:800; background:#eef3f8; }
       .ledger{ width:100%; border-collapse:collapse; }
       .ledger th, .ledger td{ padding:7px 8px; font-size:12px; text-align:center; border:1px solid #2f6fb0; }
       .ledger th.credit-h{ background:#c8e6c9; font-weight:800; font-size:13px; }
@@ -299,14 +300,14 @@ function payslipCardHtml(r, periodLabel){
   ];
   const debits = [
     { label:'السلف', val: r.advanceDue },
-    { label:'خصم يدوي', val: r.deductionDue },
+    { label:'خصم يدوي', val: r.deductionDue || 0 },
     { label:'عدد ايام الغياب', val: r.daysAbsent },
     { label:'قيمة الغياب', val: r.absentAmount },
     { label:'خصم التأخير', val: r.lateAmount },
     { label:'تقريب الصافي', val: roundNegative || '—' }
   ];
   const creditTotal = ot15FridayAmount + r.transportAllowance + r.otherAllowances + roundPositive;
-  const debitTotal = r.advanceDue + r.absentAmount + r.lateAmount + r.deductionDue + roundNegative;
+  const debitTotal = r.advanceDue + r.absentAmount + r.lateAmount + (r.deductionDue||0) + roundNegative;
   const rowCount = Math.max(credits.length, debits.length);
   let bodyRows = '';
   for(let i=0;i<rowCount;i++){
@@ -319,6 +320,8 @@ function payslipCardHtml(r, periodLabel){
       <td class="item-label">${d.label}</td><td class="item-val">${dDisplay}</td>
     </tr>`;
   }
+  const ot1Amount = r.ot1Amount !== undefined ? r.ot1Amount : (baseSalaryDisplay - r.baseSalary);
+  const dailyHoursLabel = r.dailyHoursLabel || '—';
   return `
     <div class="card">
       <div class="letterhead">
@@ -328,7 +331,9 @@ function payslipCardHtml(r, periodLabel){
       <div class="title">كشف رواتب تفصيلي ${periodLabel ? 'عن ' + periodLabel : ''}</div>
       <table class="meta">
         <tr><td class="mlabel">الموظف:</td><td>${r.name}</td></tr>
-        <tr><td class="mlabel">اساسي الراتب:</td><td>${fmt(baseSalaryDisplay)}</td></tr>
+        <tr><td class="mlabel">الراتب الأساسي:</td><td>${fmt(r.baseSalary)}</td></tr>
+        <tr><td class="mlabel">قيمة الأوفرتايم (استكمال ساعات العمل):</td><td>${fmt(ot1Amount)}</td></tr>
+        <tr class="subtotal"><td class="mlabel">راتب الشهر لعدد ساعات عمل يومية ${dailyHoursLabel}:</td><td>${fmt(baseSalaryDisplay)}</td></tr>
       </table>
       <table class="ledger">
         <tr><th class="credit-h" colspan="2">المستحقات</th><th class="debit-h" colspan="2">الاستقطاعات</th></tr>

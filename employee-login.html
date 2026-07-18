@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بياناتي — GM Marine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .box{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:36px 34px;
+    width:100%; max-width:360px; position:relative;
+  }
+  .box::before, .box::after{content:''; position:absolute; width:5px; height:5px; border-radius:50%; background:var(--brass); opacity:.5;}
+  .box::before{top:12px; right:12px;} .box::after{bottom:12px; left:12px;}
+  h1{font-family:'Cairo',sans-serif; font-size:19px; font-weight:800; color:var(--brass-bright); margin:0 0 4px; text-align:center;}
+  .sub{color:var(--text-dim); font-size:12.5px; text-align:center; margin-bottom:26px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
+  .field input{
+    width:100%; background:var(--bg-raised); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); padding:11px 12px; font-family:'IBM Plex Mono',monospace; font-size:14px;
+  }
+  .field input:focus{outline:none; border-color:var(--brass);}
+  button{
+    width:100%; font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--brass);
+    background:var(--brass); color:#1a1410; padding:12px 16px; font-size:14px; font-weight:700; margin-top:8px;
+  }
+  button:hover{background:var(--brass-bright);}
+  button:disabled{opacity:.6; cursor:not-allowed;}
+  .error{
+    background:rgba(193,91,79,.12); border:1px solid var(--danger); color:#f0a99f; font-size:12.5px;
+    padding:10px 12px; border-radius:8px; margin-bottom:16px; display:none; line-height:1.7;
+  }
+  .hint{font-size:11px; color:var(--text-dim); text-align:center; margin-top:20px; line-height:1.8;}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>بياناتي — GM Marine</h1>
+  <div class="sub">دخول الموظف — حضورك، مرتبك، وسلفك</div>
+  <div class="error" id="errBox"></div>
+  <div class="field">
+    <label>كود الموظف</label>
+    <input type="text" id="codeInput" inputmode="numeric" autocomplete="username">
+  </div>
+  <div class="field">
+    <label>الرقم السري</label>
+    <input type="password" id="pinInput" autocomplete="current-password">
+  </div>
+  <button id="loginBtn">دخول</button>
+  <div class="hint">لو أول مرة تدخل، هتستخدم الرقم السري اللي دّاهولك المدير، وهيطلب منك تغيّره فورًا.</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+const EMAIL_DOMAIN = '@emp.gm-marine.local';
+
+firebase.auth().onAuthStateChanged(function(user){
+  if(user && user.email && user.email.endsWith(EMAIL_DOMAIN)){
+    location.href = 'my-data.html';
+  }
+});
+
+function showError(msg){
+  const box = document.getElementById('errBox');
+  box.textContent = msg;
+  box.style.display = 'block';
+}
+
+function tryLogin(){
+  const code = document.getElementById('codeInput').value.trim();
+  const pin = document.getElementById('pinInput').value;
+  if(!code || !pin) return;
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'جاري الدخول...';
+  const email = 'emp' + code + EMAIL_DOMAIN;
+  firebase.auth().signInWithEmailAndPassword(email, pin).then(()=>{
+    location.href = 'my-data.html';
+  }).catch(err=>{
+    btn.disabled = false; btn.textContent = 'دخول';
+    if(err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found'){
+      showError('كود الموظف أو الرقم السري غلط، أو حسابك لسه متفعّلش — كلم المدير');
+    } else {
+      showError('حصل خطأ: ' + err.message);
+    }
+  });
+}
+document.getElementById('loginBtn').onclick = tryLogin;
+document.getElementById('pinInput').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+document.getElementById('codeInput').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+</script>
+</body>
+</html>

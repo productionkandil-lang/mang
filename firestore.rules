@@ -17,14 +17,22 @@ service cloud.firestore {
     function myRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
+    function myEmployeeCode() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.employeeCode;
+    }
     function isAdmin()     { return isSignedIn() && myRole() == 'admin'; }
     function isFinance()   { return isSignedIn() && myRole() == 'finance'; }
     function isDataEntry() { return isSignedIn() && myRole() == 'data_entry'; }
+    function isEmployee()  { return isSignedIn() && myRole() == 'employee'; }
 
-    /* بروفايل كل مستخدم (اسمه ودوره) */
+    /* بروفايل كل مستخدم (اسمه ودوره) — الموظف يقدر يعدل بياناته هو بس
+       (مسموح له يغيّر mustChangePassword بعد أول دخول) لكن مش دوره */
     match /users/{uid} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
       allow write: if isAdmin();
+      allow update: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.employeeCode == resource.data.employeeCode;
     }
 
     /* بيانات التطبيق نفسها — مفتاح لكل نوع بيانات، بنفس أسماء المفاتيح القديمة */
@@ -49,10 +57,23 @@ service cloud.firestore {
             ])
         || (isFinance() && key == 'gm_att_advances');
     }
+
+    /* ملف خاص لكل موظف — بيانات حضوره وتقفيلاته وسلفه هو بس.
+       الموظف نفسه بس (أو الأدمن) يقدر يقرأه — حتى لو حاول من عند
+       السيرفر مباشرة مش هيقدر يشوف ملف زميله. */
+    match /employee_views/{code} {
+      allow read: if isAdmin() || (isEmployee() && myEmployeeCode() == code);
+      allow write: if isAdmin() || isDataEntry() || isFinance();
+    }
   }
 }
 
 /* ملحوظة: بيانات المرتب الأساسي وبدل المواصلات متخزنة في مفتاح منفصل
    خالص (gm_att_employees_money) — مدخل البيانات معندوش صلاحية قراءة
    ليه أصلًا من عند السيرفر، مش بس مخفي بالتصميم. ده الفرق الحقيقي عن
-   النسخة اللي كانت شغالة على المتصفح بس. */
+   النسخة اللي كانت شغالة على المتصفح بس.
+
+   ملحوظة تانية: كل موظف عنده مستند خاص بيه في employee_views — حتى
+   لو حاول يقرأ مستند زميله من الكونسول مباشرة، القاعدة بترفض الطلب
+   لأنها بتتحقق من employeeCode المسجل في بروفايله هو، مش من اللي
+   بيبعته في الطلب. */

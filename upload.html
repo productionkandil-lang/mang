@@ -673,7 +673,27 @@ async function processMonth(){
 
   const resultsArr = Object.values(results);
   await DB.dbSetJSON(PROCESSED_KEY, { generatedAt: Date.now(), results: resultsArr });
+  await syncEmployeeViews();
   renderResults(resultsArr);
+}
+
+async function syncEmployeeViews(){
+  const portalEmployees = employees.filter(e=>e.portalEnabled && e.code);
+  if(!portalEmployees.length) return;
+  for(const emp of portalEmployees){
+    const empRows = rawRows.filter(r=>r.code===emp.code).map(r=>({
+      date: r.date.toISOString(), dateKey: r.dateKey,
+      clockIn: r.effectiveArrival!=null ? r.effectiveArrival : r.clockIn,
+      clockOut: r.clockOut, absent: !!r.absent, isOffDay: !!r.isOffDay
+    }));
+    try{
+      await firebase.firestore().collection('employee_views').doc(emp.code).set({
+        name: emp.arabicName || emp.name, currentMonthAttendance: empRows
+      }, { merge:true });
+    }catch(err){
+      console.error('تعذر تحديث ملف الموظف', emp.code, err);
+    }
+  }
 }
 
 function safeN(n, decimals){

@@ -186,7 +186,22 @@ const ADV_KEY = 'gm_att_advances';
 const EMP_KEY = 'gm_att_employees_public';
 
 async function loadAdvances(){ return await DB.dbGetJSON(ADV_KEY, []); }
-async function saveAdvances(a){ await DB.dbSetJSON(ADV_KEY, a); }
+async function saveAdvances(a){
+  await DB.dbSetJSON(ADV_KEY, a);
+  syncPortalAdvances(a); // مش لازم ننتظرها، مجرد تحديث لبوابة الموظف
+}
+async function syncPortalAdvances(list){
+  const codes = [...new Set(list.map(a=>a.employeeCode))];
+  for(const code of codes){
+    const emp = employees.find(e=>e.code===code);
+    if(!emp || !emp.portalEnabled) continue;
+    try{
+      await firebase.firestore().collection('employee_views').doc(code).set({
+        advances: list.filter(a=>a.employeeCode===code)
+      }, { merge:true });
+    }catch(err){ console.error('تعذر تحديث سلف الموظف', code, err); }
+  }
+}
 async function loadEmployees(){ return await DB.dbGetJSON(EMP_KEY, []); }
 
 let advances = await loadAdvances();

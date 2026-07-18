@@ -151,6 +151,7 @@
           <th class="money-col">بدل المواصلات اليومي</th>
           <th>فترات التوظيف</th>
           <th>فترات تغيير النظام</th>
+          <th>بوابة الموظف</th>
           <th></th>
         </tr>
       </thead>
@@ -203,6 +204,20 @@ function toast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function renderPortalCell(emp){
+  const isAdmin = Auth.getSession().role === 'admin';
+  if(!isAdmin){
+    return emp.portalEnabled ? '<span style="color:var(--success); font-size:12px;">مفعّل</span>' : '<span style="color:var(--text-dim); font-size:12px;">—</span>';
+  }
+  if(emp.portalEnabled){
+    return `<button class="revoke-portal-btn" data-id="${emp.id}" data-code="${emp.code}" style="color:var(--danger);">إلغاء الصلاحية</button>`;
+  }
+  if(!emp.code){
+    return '<span style="color:var(--text-dim); font-size:11px;">محتاج كود الأول</span>';
+  }
+  return `<button class="enable-portal-btn" data-id="${emp.id}" data-code="${emp.code}" data-name="${emp.name}">تفعيل الدخول</button>`;
 }
 
 function money(empId){ return moneyMap[empId] || { baseSalary:0, dailyTransportAllowance:0 }; }
@@ -285,6 +300,7 @@ function renderTable(){
       <td class="money-col"><input type="number" class="cell-input transportInput" data-id="${emp.id}" value="${m.dailyTransportAllowance||0}"></td>
       <td class="periods-cell" data-id="${emp.id}">${renderPeriodsHtml(emp)}</td>
       <td class="periods-cell" data-id="${emp.id}">${renderSysPeriodsHtml(emp)}</td>
+      <td>${renderPortalCell(emp)}</td>
       <td><button class="del-btn" data-id="${emp.id}" title="حذف">✕</button></td>
     `;
     body.appendChild(tr);
@@ -387,6 +403,56 @@ function renderTable(){
       if(canWriteMoney()){ delete moneyMap[emp.id]; saveMoney(moneyMap); }
       renderStats(); renderTable();
       toast('تم الحذف');
+    };
+  });
+
+  body.querySelectorAll('.enable-portal-btn').forEach(btn=>{
+    btn.onclick = async e=>{
+      const empId = e.target.dataset.id;
+      const code = e.target.dataset.code;
+      const name = e.target.dataset.name;
+      const pin = prompt('اكتب رقم سري مبدئي للموظف "'+name+'" (هيطلب منه يغيّره أول ما يدخل):');
+      if(!pin || pin.length < 4){ if(pin!==null) alert('الرقم لازم يكون 4 أرقام على الأقل'); return; }
+      const email = 'emp' + code + '@emp.gm-marine.local';
+      const secondaryApp = firebase.initializeApp(firebase.app().options, 'Secondary-' + Date.now());
+      try{
+        const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, pin);
+        const uid = cred.user.uid;
+        await firebase.firestore().collection('users').doc(uid).set({
+          name, employeeCode: code, role:'employee', mustChangePassword:true
+        });
+        await secondaryApp.auth().signOut();
+        const emp = employees.find(x=>x.id===empId);
+        emp.portalEnabled = true;
+        emp.portalUid = uid;
+        await saveEmployees(employees);
+        renderTable();
+        toast('تم تفعيل الدخول — قول للموظف الكود ("'+code+'") والرقم السري اللي اخترته');
+      }catch(err){
+        alert(err.code==='auth/email-already-in-use' ? 'الكود ده متفعّل بالفعل' : 'حصل خطأ: '+err.message);
+      }finally{
+        await secondaryApp.delete();
+      }
+    };
+  });
+
+  body.querySelectorAll('.revoke-portal-btn').forEach(btn=>{
+    btn.onclick = async e=>{
+      const empId = e.target.dataset.id;
+      const emp = employees.find(x=>x.id===empId);
+      if(!confirm('إلغاء دخول الموظف "'+emp.name+'" على بوابة بياناته؟')) return;
+      try{
+        if(emp.portalUid){
+          await firebase.firestore().collection('users').doc(emp.portalUid).delete();
+        }
+        emp.portalEnabled = false;
+        delete emp.portalUid;
+        await saveEmployees(employees);
+        renderTable();
+        toast('تم إلغاء الصلاحية');
+      }catch(err){
+        alert('حصل خطأ: ' + err.message);
+      }
     };
   });
 }

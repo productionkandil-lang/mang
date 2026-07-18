@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بياناتي — GM Marine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12181c; --bg-raised:#182027; --surface:#1d262d; --surface-2:#243037;
+    --border:#2e3a42; --text:#e9e6df; --text-dim:#8fa0a8;
+    --brass:#c8894f; --brass-bright:#e0a868; --teal:#3f8f8a;
+    --danger:#c15b4f; --success:#5fa373; --warn:#d1a34a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; min-height:100vh;
+    background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px; background-attachment:fixed;
+  }
+  header{
+    padding:22px 32px; border-bottom:1px solid var(--border); background:var(--bg-raised);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{font-family:'Cairo',sans-serif; font-weight:800; font-size:20px; margin:0; color:var(--brass-bright);}
+  header .tag{color:var(--text-dim); font-size:12.5px; margin-top:4px;}
+  .actions a, .actions button{
+    color:var(--text-dim); text-decoration:none; font-size:12.5px; background:transparent;
+    border:1px solid var(--border); border-radius:8px; padding:8px 14px; cursor:pointer; margin-inline-start:8px;
+  }
+  .actions a:hover, .actions button:hover{border-color:var(--brass); color:var(--brass-bright);}
+  main{max-width:900px; margin:0 auto; padding:28px 24px 80px;}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px; margin-bottom:20px; position:relative;}
+  .card::before, .card::after{content:''; position:absolute; width:5px; height:5px; border-radius:50%; background:var(--brass); opacity:.5;}
+  .card::before{top:10px; right:10px;} .card::after{bottom:10px; left:10px;}
+  .card h3{font-family:'Cairo',sans-serif; font-size:15px; margin:0 0 16px; color:var(--brass-bright); padding-bottom:10px; border-bottom:1px solid var(--border);}
+
+  .stats{display:flex; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
+  .stat{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 18px; min-width:130px;}
+  .stat .n{font-family:'IBM Plex Mono',monospace; font-size:20px; font-weight:600; color:var(--brass-bright);}
+  .stat .l{font-size:11.5px; color:var(--text-dim); margin-top:2px;}
+
+  table{width:100%; border-collapse:collapse;}
+  thead th{background:var(--surface-2); text-align:right; padding:9px 10px; font-size:11.5px; color:var(--text-dim); font-weight:700; border-bottom:1px solid var(--border);}
+  tbody td{padding:8px 10px; border-bottom:1px solid var(--border); font-size:12.5px;}
+  tbody tr:last-child td{border-bottom:none;}
+  td.mono{font-family:'IBM Plex Mono',monospace;}
+
+  .payslip-item{
+    background:var(--bg-raised); border:1px solid var(--border); border-radius:10px; padding:14px 16px;
+    margin-bottom:10px; cursor:pointer;
+  }
+  .payslip-item .row{display:flex; justify-content:space-between; align-items:center;}
+  .payslip-item .label{font-weight:700;}
+  .payslip-item .net{font-family:'IBM Plex Mono',monospace; color:var(--brass-bright); font-weight:700;}
+  .payslip-detail{display:none; margin-top:12px; border-top:1px solid var(--border); padding-top:12px;}
+  .payslip-detail.open{display:block;}
+  .ledger-row{display:flex; justify-content:space-between; font-size:12.5px; padding:4px 0; color:var(--text-dim);}
+  .ledger-row b{color:var(--text); font-family:'IBM Plex Mono',monospace;}
+
+  .empty{text-align:center; padding:40px 20px; color:var(--text-dim); font-size:13px;}
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:200;
+  }
+  .modal{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:28px; width:100%; max-width:340px;}
+  .modal h3{margin:0 0 6px; font-family:'Cairo',sans-serif; color:var(--brass-bright);}
+  .modal p{font-size:12.5px; color:var(--text-dim); margin:0 0 16px; line-height:1.8;}
+  .modal .field{margin-bottom:14px;}
+  .modal .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
+  .modal .field input{
+    width:100%; background:var(--bg-raised); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); padding:10px 12px; font-family:'IBM Plex Mono',monospace; font-size:14px;
+  }
+  .modal button{
+    width:100%; font-family:'Tajawal',sans-serif; cursor:pointer; border-radius:8px; border:1px solid var(--brass);
+    background:var(--brass); color:#1a1410; padding:11px 16px; font-size:13.5px; font-weight:700;
+  }
+  .modal .error{
+    background:rgba(193,91,79,.12); border:1px solid var(--danger); color:#f0a99f; font-size:12px;
+    padding:8px 10px; border-radius:8px; margin-bottom:12px; display:none;
+  }
+</style>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+
+<header>
+  <div>
+    <h1 id="headerTitle">بياناتي</h1>
+    <div class="tag" id="headerTag">جاري التحميل...</div>
+  </div>
+  <div class="actions">
+    <button id="changePinBtn">تغيير الرقم السري</button>
+    <a href="#" id="logoutLink">خروج</a>
+  </div>
+</header>
+
+<main id="mainContent" style="display:none;">
+  <div class="stats" id="statsBox"></div>
+
+  <div class="card">
+    <h3>حضوري وانصرافي — الشهر الحالي</h3>
+    <div id="attendanceWrap"></div>
+  </div>
+
+  <div class="card">
+    <h3>كشوف المرتب (الشهور السابقة)</h3>
+    <div id="payslipsWrap"></div>
+  </div>
+
+  <div class="card">
+    <h3>السلف والخصومات</h3>
+    <div id="advancesWrap"></div>
+  </div>
+</main>
+
+<script>
+const EMAIL_DOMAIN = '@emp.gm-marine.local';
+const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '—'; return (Math.round(n*100)/100).toLocaleString(); }
+function minutesToTime(m){ if(m==null) return '—'; const h=Math.floor(m/60), mm=m%60; return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0'); }
+
+let myCode = null;
+let myProfile = null;
+
+firebase.auth().onAuthStateChanged(async function(user){
+  if(!user || !user.email || !user.email.endsWith(EMAIL_DOMAIN)){
+    location.href = 'employee-login.html';
+    return;
+  }
+  try{
+    const snap = await firebase.firestore().collection('users').doc(user.uid).get();
+    if(!snap.exists || snap.data().role !== 'employee'){
+      alert('حسابك مش متفعّل كموظف — كلم المدير');
+      firebase.auth().signOut();
+      return;
+    }
+    myProfile = snap.data();
+    myCode = myProfile.employeeCode;
+
+    if(myProfile.mustChangePassword){
+      showChangePinModal(true);
+      return;
+    }
+
+    await loadDashboard();
+  }catch(err){
+    alert('حصل خطأ في تحميل بياناتك: ' + err.message);
+  }
+});
+
+async function loadDashboard(){
+  document.getElementById('headerTitle').textContent = 'أهلًا، ' + (myProfile.name || myCode);
+  document.getElementById('headerTag').textContent = 'كود: ' + myCode;
+  document.getElementById('mainContent').style.display = 'block';
+
+  let data = null;
+  try{
+    const snap = await firebase.firestore().collection('employee_views').doc(myCode).get();
+    data = snap.exists ? snap.data() : null;
+  }catch(err){
+    document.getElementById('attendanceWrap').innerHTML = '<div class="empty">تعذر تحميل البيانات: '+err.message+'</div>';
+    return;
+  }
+
+  if(!data){
+    document.getElementById('statsBox').innerHTML = '';
+    document.getElementById('attendanceWrap').innerHTML = '<div class="empty">لسه مفيش بيانات ليك — هتظهر أول ما يتحسب الشهر</div>';
+    document.getElementById('payslipsWrap').innerHTML = '<div class="empty">مفيش كشوف مرتب لسه</div>';
+    document.getElementById('advancesWrap').innerHTML = '<div class="empty">مفيش سلف مسجلة</div>';
+    return;
+  }
+
+  renderStats(data);
+  renderAttendance(data.currentMonthAttendance || []);
+  renderPayslips(data.payslips || []);
+  renderAdvances(data.advances || []);
+}
+
+function renderStats(data){
+  const att = data.currentMonthAttendance || [];
+  const present = att.filter(a=>!a.absent).length;
+  const absent = att.filter(a=>a.absent).length;
+  const lastPayslip = (data.payslips||[])[data.payslips.length-1];
+  document.getElementById('statsBox').innerHTML = `
+    <div class="stat"><div class="n">${present}</div><div class="l">أيام حضور (الشهر الحالي)</div></div>
+    <div class="stat"><div class="n">${absent}</div><div class="l">أيام غياب (الشهر الحالي)</div></div>
+    <div class="stat"><div class="n">${lastPayslip ? fmt(lastPayslip.netSalary) : '—'}</div><div class="l">آخر صافي مستحق</div></div>
+  `;
+}
+
+function renderAttendance(list){
+  const box = document.getElementById('attendanceWrap');
+  if(!list.length){ box.innerHTML = '<div class="empty">لسه مفيش بيانات حضور للشهر الحالي</div>'; return; }
+  const sorted = list.slice().sort((a,b)=> new Date(b.date) - new Date(a.date));
+  box.innerHTML = `
+    <table>
+      <thead><tr><th>التاريخ</th><th>اليوم</th><th>حضور</th><th>انصراف</th><th>الحالة</th></tr></thead>
+      <tbody>
+        ${sorted.map(r=>`
+          <tr>
+            <td class="mono">${r.dateKey}</td>
+            <td>${dayNames[new Date(r.date).getDay()]}</td>
+            <td class="mono">${r.clockIn!=null ? minutesToTime(r.clockIn) : '—'}</td>
+            <td class="mono">${r.clockOut!=null ? minutesToTime(r.clockOut) : '—'}</td>
+            <td>${r.absent ? 'غياب' : (r.isOffDay ? 'إجازة' : 'حضور')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderPayslips(list){
+  const box = document.getElementById('payslipsWrap');
+  if(!list.length){ box.innerHTML = '<div class="empty">مفيش كشوف مرتب اتقفلت لسه</div>'; return; }
+  const sorted = list.slice().reverse();
+  box.innerHTML = sorted.map((p,i)=>`
+    <div class="payslip-item" data-i="${i}">
+      <div class="row">
+        <span class="label">${p.label}</span>
+        <span class="net">${fmt(p.netSalary)}</span>
+      </div>
+      <div class="payslip-detail" id="detail-${i}">
+        <div class="ledger-row"><span>الراتب الأساسي</span><b>${fmt(p.baseSalary)}</b></div>
+        <div class="ledger-row"><span>قيمة الأوفرتايم</span><b>${fmt((p.ot1Amount||0)+(p.ot15FridayAmount||0))}</b></div>
+        <div class="ledger-row"><span>بدل مواصلات</span><b>${fmt(p.transportAllowance)}</b></div>
+        <div class="ledger-row"><span>خصم التأخير</span><b>-${fmt(p.lateAmount)}</b></div>
+        <div class="ledger-row"><span>خصم الغياب</span><b>-${fmt(p.absentAmount)}</b></div>
+        <div class="ledger-row"><span>سلفة مستحقة</span><b>-${fmt(p.advanceDue)}</b></div>
+        <div class="ledger-row"><span>خصم يدوي</span><b>-${fmt(p.deductionDue||0)}</b></div>
+        <div class="ledger-row"><span>تقريب الصافي</span><b>${fmt(p.roundingAdjustment||0)}</b></div>
+        <div class="ledger-row" style="border-top:1px solid var(--border); padding-top:8px; margin-top:4px;"><span>الصافي</span><b style="color:var(--brass-bright);">${fmt(p.netSalary)}</b></div>
+      </div>
+    </div>
+  `).join('');
+  box.querySelectorAll('.payslip-item').forEach(el=>{
+    el.onclick = ()=>{
+      document.getElementById('detail-'+el.dataset.i).classList.toggle('open');
+    };
+  });
+}
+
+function renderAdvances(list){
+  const box = document.getElementById('advancesWrap');
+  const active = list.filter(a=>a.remaining>0);
+  if(!active.length){ box.innerHTML = '<div class="empty">مفيش سلف أو خصومات مستحقة عليك</div>'; return; }
+  box.innerHTML = `
+    <table>
+      <thead><tr><th>النوع</th><th>المبلغ الكلي</th><th>المتبقي</th><th>القسط الشهري</th></tr></thead>
+      <tbody>
+        ${active.map(a=>`
+          <tr>
+            <td>${a.type==='advance' ? 'سلفة' : 'خصم/جزاء'}</td>
+            <td class="mono">${fmt(a.totalAmount)}</td>
+            <td class="mono">${fmt(a.remaining)}</td>
+            <td class="mono">${fmt(Math.min(a.totalAmount/a.installments, a.remaining))}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ---------- تغيير الرقم السري ----------
+function showChangePinModal(forced){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'pinModalOverlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>${forced ? 'غيّر رقمك السري' : 'تغيير الرقم السري'}</h3>
+      <p>${forced ? 'أول مرة تدخل — لازم تختار رقم سري جديد بس إنت تعرفه.' : 'اكتب رقمك الحالي والرقم الجديد.'}</p>
+      <div class="error" id="pinErrBox"></div>
+      ${forced ? '' : `<div class="field"><label>الرقم الحالي</label><input type="password" id="currentPinInput"></div>`}
+      <div class="field"><label>الرقم الجديد</label><input type="password" id="newPinInput"></div>
+      <div class="field"><label>تأكيد الرقم الجديد</label><input type="password" id="confirmPinInput"></div>
+      <button id="savePinBtn">حفظ</button>
+      ${forced ? '' : `<button id="cancelPinBtn" style="background:var(--surface-2); border-color:var(--border); color:var(--text); margin-top:8px;">إلغاء</button>`}
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  if(!forced){
+    document.getElementById('cancelPinBtn').onclick = ()=> overlay.remove();
+  }
+
+  document.getElementById('savePinBtn').onclick = async ()=>{
+    const errBox = document.getElementById('pinErrBox');
+    errBox.style.display = 'none';
+    const newPin = document.getElementById('newPinInput').value;
+    const confirmPin = document.getElementById('confirmPinInput').value;
+    if(!newPin || newPin.length < 4){ errBox.textContent = 'الرقم السري لازم يكون 4 أرقام على الأقل'; errBox.style.display='block'; return; }
+    if(newPin !== confirmPin){ errBox.textContent = 'الرقمين مش متطابقين'; errBox.style.display='block'; return; }
+
+    const user = firebase.auth().currentUser;
+    try{
+      if(!forced){
+        const currentPin = document.getElementById('currentPinInput').value;
+        const cred = firebase.auth.EmailAuthProvider.credential(user.email, currentPin);
+        await user.reauthenticateWithCredential(cred);
+      }
+      await user.updatePassword(newPin);
+      await firebase.firestore().collection('users').doc(user.uid).update({ mustChangePassword: false });
+      overlay.remove();
+      if(forced){
+        myProfile.mustChangePassword = false;
+        await loadDashboard();
+      }
+    }catch(err){
+      errBox.textContent = 'حصل خطأ: ' + (err.code==='auth/wrong-password' ? 'الرقم الحالي غلط' : err.message);
+      errBox.style.display = 'block';
+    }
+  };
+}
+
+document.getElementById('changePinBtn').onclick = ()=> showChangePinModal(false);
+document.getElementById('logoutLink').onclick = (e)=>{
+  e.preventDefault();
+  firebase.auth().signOut().then(()=> location.href = 'employee-login.html');
+};
+</script>
+</body>
+</html>

@@ -513,6 +513,28 @@ document.getElementById('printBtn').onclick = ()=>{
   printPayslips(rows, currentMonthLabel());
 };
 
+async function syncEmployeeViewsAtClose(label, advList){
+  const portalEmployees = employees.filter(e=>e.portalEnabled && e.code);
+  for(const emp of portalEmployees){
+    const row = reportRows.find(r=>r.code===emp.code);
+    if(!row) continue;
+    try{
+      const snap = await firebase.firestore().collection('employee_views').doc(emp.code).get();
+      const existing = snap.exists ? snap.data() : {};
+      const payslips = existing.payslips || [];
+      payslips.push({ label, closedAt: Date.now(), ...row });
+      const empAdvances = advList.filter(a=>a.employeeCode===emp.code);
+      await firebase.firestore().collection('employee_views').doc(emp.code).set({
+        name: emp.arabicName || emp.name,
+        payslips,
+        advances: empAdvances
+      }, { merge:true });
+    }catch(err){
+      console.error('تعذر مزامنة ملف الموظف', emp.code, err);
+    }
+  }
+}
+
 document.getElementById('closeMonthBtn').onclick = async ()=>{
   if(!reportRows.length){ alert('مفيش بيانات لتقفيلها'); return; }
   const label = prompt('اسم/شهر التقرير ده:', currentMonthLabel());
@@ -538,6 +560,8 @@ document.getElementById('closeMonthBtn').onclick = async ()=>{
     a.remaining = Math.max(0, a.remaining - due);
   });
   await save(ADV_KEY, advList);
+
+  await syncEmployeeViewsAtClose(label, advList);
 
   await DB.dbDeleteKey(RAW_KEY);
   await DB.dbDeleteKey(PROCESSED_KEY);

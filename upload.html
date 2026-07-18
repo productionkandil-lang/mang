@@ -506,8 +506,13 @@ function computeEffectiveArrivals(){
     const masterFirst = Math.min(...validMasterRows.map(r=>r.clockIn));
     const windowStart = Math.max(masterFirst - graceBefore, officialStart - graceBefore);
     const windowEnd = masterFirst + graceAfter;
+    // الصف (أو الصفوف) اللي حددت "أول بصمة" بتاعة اليوم هي المرجع لغيرها،
+    // مش بتاعة نفسها — عشان لو حد لوحده حضر الساعة ٢ الضهر (شاذ)، متتصحّحش
+    // بصمته هو نفسه، حتى لو نطاقه اتحسب من بصمته هو
+    const referenceRows = new Set(validMasterRows.filter(r=>r.clockIn===masterFirst));
 
     dayRows.forEach(r=>{
+      if(referenceRows.has(r)) return;
       if(r.manualArrivalOverride) return; // التعديل اليدوي له الأولوية دايمًا، مش بيتغيّر أوتوماتيك
       if(r.clockIn < officialStart - graceBefore) return; // بصمة مبكرة جدًا عن الميعاد الرسمي، تتسجل زي ما هي دايمًا
       const sys = getSystem(r._sysId);

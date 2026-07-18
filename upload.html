@@ -506,6 +506,7 @@ function computeEffectiveArrivals(){
 
     if(windowStart!==null){
       dayRows.forEach(r=>{
+        if(r.manualArrivalOverride) return; // التعديل اليدوي له الأولوية دايمًا، مش بيتغيّر أوتوماتيك
         const sys = getSystem(r._sysId);
         const optIn = sys && sys.grace && sys.grace.enabled;
         if(optIn && r.clockIn>=windowStart && r.clockIn<=windowEnd){
@@ -590,7 +591,7 @@ async function processMonth(){
   const workingRows = rawRows;
 
   const results = {}; // code -> aggregated
-  employees.forEach(e=>{
+  employees.filter(e=>e.active !== false).forEach(e=>{
     results[e.code] = {
       code:e.code, name:e.name, systemId:e.systemId,
       daysPresent:0, daysAbsent:0,

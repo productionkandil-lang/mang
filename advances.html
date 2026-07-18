@@ -208,11 +208,12 @@ function monthlyDue(rec){
 
 function renderEmpSelect(){
   const sel = document.getElementById('empSelect');
-  if(!employees.length){
-    sel.innerHTML = '<option value="">لا يوجد موظفين — أضف موظف الأول من صفحة الموظفين</option>';
+  const activeEmployees = employees.filter(e=>e.active !== false);
+  if(!activeEmployees.length){
+    sel.innerHTML = '<option value="">لا يوجد موظفين نشطين — أضف موظف الأول من صفحة الموظفين</option>';
     return;
   }
-  sel.innerHTML = employees.map(e=>`<option value="${e.code}">${e.name} (${e.code})</option>`).join('');
+  sel.innerHTML = activeEmployees.map(e=>`<option value="${e.code}">${e.name} (${e.code})</option>`).join('');
 }
 
 function renderTypeToggle(){

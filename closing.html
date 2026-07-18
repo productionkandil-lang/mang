@@ -365,7 +365,12 @@ function formatHoursLabel(hours){
 
 function buildReportRows(){
   if(!processed || !processed.results) return [];
-  return processed.results.map(res=>{
+  return processed.results
+    .filter(res=>{
+      const emp = getEmp(res.code);
+      return !emp || emp.active !== false;
+    })
+    .map(res=>{
     const emp = getEmp(res.code) || {};
     const sys = getSystem(res.systemId);
     const baseSalary = emp.baseSalary || 0;

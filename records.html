@@ -229,7 +229,10 @@ function dateKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(
 
 function renderFilter(){
   const sel = document.getElementById('empFilter');
-  const uniqueCodes = [...new Set(rows.map(r=>r.code))];
+  const uniqueCodes = [...new Set(rows.map(r=>r.code))].filter(code=>{
+    const emp = employees.find(e=>e.code===code);
+    return !emp || emp.active !== false;
+  });
   sel.innerHTML = '<option value="all">كل الموظفين</option>' +
     uniqueCodes.map(code=>{
       const name = (rows.find(r=>r.code===code)||{}).name || code;
@@ -255,6 +258,10 @@ function renderTable(){
   const filtered = rows
     .map((r,idx)=>({...r, _idx:idx}))
     .filter(r=> empFilterVal==='all' || r.code===empFilterVal)
+    .filter(r=>{
+      const emp = employees.find(e=>e.code===r.code);
+      return !emp || emp.active !== false;
+    })
     .sort((a,b)=>{
       if(sortField){
         const av = a[sortField], bv = b[sortField];
@@ -288,7 +295,7 @@ function renderTable(){
       <td>${dateKey(d)}</td>
       <td class="weekday-tag">${dayNames[weekday]} ${isOff ? '<span class="off-badge">إجازة</span>' : ''} ${r.autoFilled ? '<span class="off-badge" style="background:rgba(193,91,79,.15);color:#e08d85;">غياب أوتوماتيك</span>' : ''}</td>
       <td><input type="text" class="time-input" placeholder="--:--" value="${minutesToTime(r.clockIn)}" data-idx="${r._idx}" data-field="clockIn"></td>
-      <td class="adjusted-col ${r.effectiveArrival!=null && r.effectiveArrival!==r.clockIn ? 'changed':''}">${r.clockIn==null ? '—' : minutesToTime(r.effectiveArrival!=null ? r.effectiveArrival : r.clockIn)}</td>
+      <td class="adjusted-col ${r.effectiveArrival!=null && r.effectiveArrival!==r.clockIn ? 'changed':''}">${r.clockIn==null ? '—' : minutesToTime(r.effectiveArrival!=null ? r.effectiveArrival : r.clockIn)} ${r.manualArrivalOverride ? '<span title="تعديل يدوي — مش هيتغيّر أوتوماتيك">🔒</span>' : ''}</td>
       <td><input type="text" class="time-input" placeholder="--:--" value="${minutesToTime(r.clockOut)}" data-idx="${r._idx}" data-field="clockOut"></td>
       <td class="adjusted-col">${r.clockOut==null ? '—' : minutesToTime(r.clockOut)}</td>
       <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="${r._idx}" ${r.absent?'checked':''}></td>
@@ -306,6 +313,7 @@ function renderTable(){
       rows[idx][field] = val;
       if(val!==null) rows[idx].absent = false;
       delete rows[idx].autoFilled;
+      if(field==='clockIn') rows[idx].manualArrivalOverride = true;
       dirty.add(idx);
       renderTable();
     };

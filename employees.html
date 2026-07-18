@@ -130,7 +130,7 @@
   <div class="toolbar">
     <div>
       <h2>قائمة الموظفين</h2>
-      <p>عدّل النظام، المرتب الأساسي، وبدل المواصلات اليومي لكل موظف مباشرة في الجدول</p>
+      <p>عدّل النظام، المرتب الأساسي، وبدل المواصلات اليومي لكل موظف مباشرة في الجدول. لو الموظف ترك العمل، شيل علامة "نشط" — هيختفي من بيانات الشهر والسلف وتقفيل الشهر تلقائيًا، لكن بياناته القديمة تفضل محفوظة.</p>
     </div>
     <div class="actions">
       <input class="search" id="searchBox" placeholder="بحث بالاسم أو الكود...">
@@ -269,6 +269,7 @@ function renderTable(){
   filtered.forEach(emp=>{
     const m = money(emp.id);
     const tr = document.createElement('tr');
+    if(emp.active === false) tr.style.opacity = '0.45';
     tr.innerHTML = `
       <td><input type="checkbox" class="active-toggle" data-id="${emp.id}" ${emp.active?'checked':''}></td>
       <td class="code">${emp.code || '—'}</td>

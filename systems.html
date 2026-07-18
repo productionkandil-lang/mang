@@ -175,7 +175,7 @@ function defaultSystem(id, name){
     monthlyRestDays: 4,
     monthlyRequiredHours: 281,
 
-    grace: { enabled:true, minutes:10, isMaster:false },
+    grace: { enabled:true, minutesBefore:0, minutesAfter:10, isMaster:false },
 
     overtime: { baseHours: 8, rate1MaxHours: 1.5, rate1: 1, rate2: 1.5 },
 
@@ -239,6 +239,11 @@ async function loadSystems(){
         ],
         beyondMode:'presentOnly'
       };
+      migrated = true;
+    }
+    if(sys.grace && sys.grace.minutesAfter==null){
+      sys.grace.minutesAfter = sys.grace.minutes!=null ? sys.grace.minutes : 10;
+      sys.grace.minutesBefore = sys.grace.minutesBefore || 0;
       migrated = true;
     }
   });
@@ -327,7 +332,7 @@ function renderEditor(){
       <div class="switch-row" style="margin-bottom:16px;">
         <div>
           <div class="label">تفعيل السماحية الديناميكية</div>
-          <div class="sub">أول بصمة حضور في المجموعة + عدد الدقائق = ميعاد الحضور الرسمي لليوم</div>
+          <div class="sub">أول بصمة حضور في المجموعة ± عدد دقائق قبل/بعد = ميعاد الحضور الرسمي لليوم</div>
         </div>
         <label class="switch">
           <input type="checkbox" id="graceEnabled" ${sys.grace.enabled?'checked':''}>
@@ -336,8 +341,13 @@ function renderEditor(){
       </div>
       <div class="row2 ${sys.grace.enabled?'':'depend'}" id="graceFields">
         <div class="field">
-          <label>عدد دقائق السماحية</label>
-          <input type="number" id="graceMinutes" value="${sys.grace.minutes}">
+          <label>دقائق السماحية قبل أول بصمة</label>
+          <input type="number" id="graceMinutesBefore" value="${sys.grace.minutesBefore||0}">
+          <div class="hint">لو حد بصم قبل أول واحد من النظام المرجعي بالدقائق دي أو أقل، هيتحسب معاه</div>
+        </div>
+        <div class="field">
+          <label>دقائق السماحية بعد أول بصمة</label>
+          <input type="number" id="graceMinutesAfter" value="${sys.grace.minutesAfter!=null ? sys.grace.minutesAfter : (sys.grace.minutes||0)}">
         </div>
         <div class="field">
           <label>هل هذا النظام هو "مرجع" فتح المصنع؟</label>
@@ -498,7 +508,8 @@ function renderEditor(){
   });
 
   document.getElementById('graceEnabled').onchange = e=>{ sys.grace.enabled = e.target.checked; renderEditor(); };
-  document.getElementById('graceMinutes').oninput = e=> sys.grace.minutes = parseInt(e.target.value)||0;
+  document.getElementById('graceMinutesBefore').oninput = e=> sys.grace.minutesBefore = parseInt(e.target.value)||0;
+  document.getElementById('graceMinutesAfter').oninput = e=> sys.grace.minutesAfter = parseInt(e.target.value)||0;
   document.getElementById('graceMaster').onchange = e=> sys.grace.isMaster = (e.target.value==='true');
 
   document.getElementById('otBase').oninput = e=>{ sys.overtime.baseHours = parseFloat(e.target.value)||0; updateOtThresholdDisplay(sys); };

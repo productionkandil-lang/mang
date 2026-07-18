@@ -234,6 +234,11 @@ async function migrateSystems(s){
       ], beyondMode:'presentOnly' };
       migrated = true;
     }
+    if(sys.grace && sys.grace.minutesAfter==null){
+      sys.grace.minutesAfter = sys.grace.minutes!=null ? sys.grace.minutes : 10;
+      sys.grace.minutesBefore = sys.grace.minutesBefore || 0;
+      migrated = true;
+    }
   });
   if(migrated) await DB.dbSetJSON(SYS_KEY, s);
   return s;
@@ -484,36 +489,26 @@ function computeEffectiveArrivals(){
     });
 
     if(!masterSystem || !masterSystem.grace.enabled) return;
-    const graceMin = masterSystem.grace.minutes;
+    const graceBefore = masterSystem.grace.minutesBefore || 0;
+    const graceAfter = masterSystem.grace.minutesAfter!=null ? masterSystem.grace.minutesAfter : (masterSystem.grace.minutes||0);
     const dateKeyOfGroup = dayRows[0].dateKey;
     const officialStart = toMinutes(officialStartFor(masterSystem, dateKeyOfGroup));
 
     const masterRows = dayRows.filter(r=>r._sysId===masterSystem.id);
-    let windowStart=null, windowEnd=null;
+    if(!masterRows.length) return; // مفيش حد من نظام المرجع حضر النهاردة، فمفيش تعديل خالص
 
-    if(masterRows.length){
-      windowStart = Math.min(...masterRows.map(r=>r.clockIn));
-      windowEnd = windowStart + graceMin;
-    } else {
-      // no master employee attended - check for majority cluster
-      const anchor = Math.min(...dayRows.map(r=>r.clockIn));
-      const clusterEnd = anchor + graceMin;
-      const clusterCount = dayRows.filter(r=> r.clockIn>=anchor && r.clockIn<=clusterEnd).length;
-      if(clusterCount / dayRows.length > 0.5){
-        windowStart = anchor; windowEnd = clusterEnd;
+    const masterFirst = Math.min(...masterRows.map(r=>r.clockIn));
+    const windowStart = masterFirst - graceBefore;
+    const windowEnd = masterFirst + graceAfter;
+
+    dayRows.forEach(r=>{
+      if(r.manualArrivalOverride) return; // التعديل اليدوي له الأولوية دايمًا، مش بيتغيّر أوتوماتيك
+      const sys = getSystem(r._sysId);
+      const optIn = sys && sys.grace && sys.grace.enabled;
+      if(optIn && r.clockIn>=windowStart && r.clockIn<=windowEnd){
+        r.effectiveArrival = officialStart;
       }
-    }
-
-    if(windowStart!==null){
-      dayRows.forEach(r=>{
-        if(r.manualArrivalOverride) return; // التعديل اليدوي له الأولوية دايمًا، مش بيتغيّر أوتوماتيك
-        const sys = getSystem(r._sysId);
-        const optIn = sys && sys.grace && sys.grace.enabled;
-        if(optIn && r.clockIn>=windowStart && r.clockIn<=windowEnd){
-          r.effectiveArrival = officialStart;
-        }
-      });
-    }
+    });
   });
 }
 
@@ -593,7 +588,7 @@ async function processMonth(){
   const results = {}; // code -> aggregated
   employees.filter(e=>e.active !== false).forEach(e=>{
     results[e.code] = {
-      code:e.code, name:e.name, systemId:e.systemId,
+      code:e.code, name:e.arabicName || e.name, systemId:e.systemId,
       daysPresent:0, daysAbsent:0,
       regularHours:0, ot1Hours:0, ot15Hours:0, fridayOtHours:0,
       lateMinutes:0

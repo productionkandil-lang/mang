@@ -228,7 +228,7 @@ function renderEmpSelect(){
     sel.innerHTML = '<option value="">لا يوجد موظفين نشطين — أضف موظف الأول من صفحة الموظفين</option>';
     return;
   }
-  sel.innerHTML = activeEmployees.map(e=>`<option value="${e.code}">${e.name} (${e.code})</option>`).join('');
+  sel.innerHTML = activeEmployees.map(e=>`<option value="${e.code}">${e.arabicName || e.name} (${e.code})</option>`).join('');
 }
 
 function renderTypeToggle(){
@@ -285,10 +285,12 @@ function renderTable(){
     const due = monthlyDue(rec);
     const paid = rec.totalAmount - rec.remaining;
     const pct = rec.totalAmount>0 ? Math.round((paid / rec.totalAmount) * 100) : 100;
+    const liveEmp = employees.find(e=>e.code===rec.employeeCode);
+    const displayName = (liveEmp && liveEmp.arabicName) ? liveEmp.arabicName : (liveEmp ? liveEmp.name : rec.employeeName);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="type-badge ${rec.type}">${rec.type==='advance' ? 'سلفة' : 'خصم'}</span></td>
-      <td class="name-col">${rec.employeeName}</td>
+      <td class="name-col">${displayName}</td>
       <td class="mono"><input type="number" class="edit-input edit-total" data-idx="${rec._origIdx}" value="${rec.totalAmount}"></td>
       <td class="mono"><input type="number" class="edit-input edit-installments" data-idx="${rec._origIdx}" value="${rec.installments}" min="1"></td>
       <td class="mono">${rec.remaining>0 ? due.toLocaleString() : '—'}</td>
@@ -370,7 +372,7 @@ document.getElementById('addBtn').onclick = ()=>{
   advances.push({
     id: 'adv_'+Date.now().toString(36),
     type: currentType,
-    employeeCode: emp.code, employeeName: emp.name,
+    employeeCode: emp.code, employeeName: emp.arabicName || emp.name,
     totalAmount: amount, installments, remaining: amount,
     note, createdAt: Date.now()
   });

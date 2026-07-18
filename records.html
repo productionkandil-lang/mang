@@ -235,7 +235,8 @@ function renderFilter(){
   });
   sel.innerHTML = '<option value="all">كل الموظفين</option>' +
     uniqueCodes.map(code=>{
-      const name = (rows.find(r=>r.code===code)||{}).name || code;
+      const emp = employees.find(e=>e.code===code);
+      const name = (emp && emp.arabicName) ? emp.arabicName : ((rows.find(r=>r.code===code)||{}).name || code);
       return `<option value="${code}">${name} (${code})</option>`;
     }).join('');
   sel.value = empFilterVal;
@@ -291,7 +292,7 @@ function renderTable(){
     tr.className = (isOff ? 'off-day ' : '') + (dirty.has(r._idx) ? 'edited' : '');
     tr.innerHTML = `
       <td class="code-col">${r.code}</td>
-      <td class="name-col">${r.name}</td>
+      <td class="name-col">${emp && emp.arabicName ? emp.arabicName : r.name}</td>
       <td>${dateKey(d)}</td>
       <td class="weekday-tag">${dayNames[weekday]} ${isOff ? '<span class="off-badge">إجازة</span>' : ''} ${r.autoFilled ? '<span class="off-badge" style="background:rgba(193,91,79,.15);color:#e08d85;">غياب أوتوماتيك</span>' : ''}</td>
       <td><input type="text" class="time-input" placeholder="--:--" value="${minutesToTime(r.clockIn)}" data-idx="${r._idx}" data-field="clockIn"></td>
@@ -351,7 +352,7 @@ document.getElementById('addRowBtn').onclick = ()=>{
   let code = empFilterVal;
   let name;
   if(code==='all'){
-    const empList = employees.map(e=>`${e.name} (${e.code})`).join('\n');
+    const empList = employees.map(e=>`${e.arabicName || e.name} (${e.code})`).join('\n');
     code = prompt('اكتب كود الموظف اللي هتضيفله يوم:\n\n' + empList);
     if(!code) return;
     const emp = employees.find(e=>e.code===code.trim());

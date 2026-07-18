@@ -497,12 +497,19 @@ function computeEffectiveArrivals(){
     const masterRows = dayRows.filter(r=>r._sysId===masterSystem.id);
     if(!masterRows.length) return; // مفيش حد من نظام المرجع حضر النهاردة، فمفيش تعديل خالص
 
-    const masterFirst = Math.min(...masterRows.map(r=>r.clockIn));
-    const windowStart = masterFirst - graceBefore;
+    // أي بصمة (حتى من النظام المرجعي نفسه) قبل الميعاد الرسمي بأكتر من السماحية
+    // مش هتتحسب كمرجع لليوم خالص — عشان حالة زي حد بصم الساعة ١ الفجر متبقاش
+    // هي اللي بتحدد "ميعاد اليوم" لباقي الناس
+    const validMasterRows = masterRows.filter(r=>r.clockIn >= officialStart - graceBefore);
+    if(!validMasterRows.length) return;
+
+    const masterFirst = Math.min(...validMasterRows.map(r=>r.clockIn));
+    const windowStart = Math.max(masterFirst - graceBefore, officialStart - graceBefore);
     const windowEnd = masterFirst + graceAfter;
 
     dayRows.forEach(r=>{
       if(r.manualArrivalOverride) return; // التعديل اليدوي له الأولوية دايمًا، مش بيتغيّر أوتوماتيك
+      if(r.clockIn < officialStart - graceBefore) return; // بصمة مبكرة جدًا عن الميعاد الرسمي، تتسجل زي ما هي دايمًا
       const sys = getSystem(r._sysId);
       const optIn = sys && sys.grace && sys.grace.enabled;
       if(optIn && r.clockIn>=windowStart && r.clockIn<=windowEnd){

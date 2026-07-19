@@ -239,7 +239,13 @@ function toast(msg){
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 1600);
 }
-function dateStr(d){ return d.toISOString().slice(0,10); }
+function dateStr(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function dowOfDateStr(ds){
+  const [y,m,dd] = ds.split('-').map(Number);
+  return new Date(y, m-1, dd).getDay();
+}
 
 // ---------- توليد الحضور الأوتوماتيكي لكل عربية عن الشهر الحالي حتى النهارده ----------
 async function autoGenerate(){
@@ -286,6 +292,7 @@ function renderVanList(){
     el.innerHTML = `
       <span class="van-name">${v.name}</span>
       <span class="van-meta">المبلغ اليومي: ${v.dailyRate||0} — إجازة أسبوعية: ${offNames}</span>
+      <button class="reset-log-btn" data-id="${v.id}" title="امسح كل السجل التلقائي وابدأ من جديد">🔄 إعادة ضبط السجل</button>
       <button class="del-van-btn" data-id="${v.id}" title="حذف العربية">✕ حذف العربية</button>
     `;
     box.appendChild(el);
@@ -299,6 +306,19 @@ function renderVanList(){
       if(activeVanId===id) activeVanId = vans[0]?.id || null;
       renderAll();
       toast('تم حذف العربية');
+    };
+  });
+  box.querySelectorAll('.reset-log-btn').forEach(btn=>{
+    btn.onclick = async e=>{
+      const id = e.target.dataset.id;
+      if(!confirm('هيتم مسح كل الأيام المسجلة تلقائيًا لهذه العربية (والأيام المستثناة/المضافة يدويًا) عشان تتصحح مشكلة التواريخ القديمة، وتتولد الأيام تاني من الأول صح. متأكد؟')) return;
+      log = log.filter(e2=>e2.vanId!==id);
+      await saveLog(log);
+      const van = vans.find(v=>v.id===id);
+      if(van){ van.excludedDates = []; van.extraWorkDates = []; await saveVans(vans); }
+      await autoGenerate();
+      renderAll();
+      toast('تم إعادة ضبط السجل بنجاح');
     };
   });
 }
@@ -338,7 +358,7 @@ function renderTable(){
 
   body.innerHTML = '';
   list.forEach(e=>{
-    const dow = new Date(e.date).getDay();
+    const dow = dowOfDateStr(e.date);
     const isWeeklyOff = van && (van.weeklyOffDays||[]).includes(dow);
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -421,7 +441,7 @@ document.getElementById('addBtn').onclick = async ()=>{
   if(!activeVanId){ alert('اختار عربية الأول'); return; }
   if(log.some(e=>e.vanId===activeVanId && e.date===date)){ alert('اليوم ده متسجل بالفعل لنفس العربية — عدّل عليه من الجدول تحت'); return; }
   const van = vans.find(v=>v.id===activeVanId);
-  const dow = new Date(date).getDay();
+  const dow = dowOfDateStr(date);
   const isWeeklyOff = van && (van.weeklyOffDays||[]).includes(dow);
   if(isWeeklyOff){
     if(!van.extraWorkDates) van.extraWorkDates = [];

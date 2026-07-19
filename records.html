@@ -155,7 +155,9 @@
   </div>
 
   <div class="footer-bar">
-    <button id="saveBtn" class="primary">حفظ التعديلات</button>
+    <span style="color:var(--text-dim); font-size:12px; margin-inline-end:12px;">التعديلات بتتحفظ أوتوماتيك — مش لازم تدوس حفظ</span>
+    <button id="saveBtn">حفظ فورًا الآن</button>
+    <span id="saveStatus" style="color:var(--success); font-size:12.5px; margin-inline-start:10px;"></span>
   </div>
 </main>
 
@@ -306,7 +308,21 @@ function renderTable(){
     body.appendChild(tr);
   });
 
-  body.querySelectorAll('.time-input').forEach(inp=>{
+  let autoSaveTimer = null;
+function scheduleAutoSave(){
+  if(autoSaveTimer) clearTimeout(autoSaveTimer);
+  document.getElementById('saveStatus').textContent = 'جاري الحفظ...';
+  autoSaveTimer = setTimeout(async ()=>{
+    await saveRaw(rows);
+    await DB.dbDeleteKey('gm_att_processed'); // force recalculation since data changed
+    dirty = new Set();
+    renderTable();
+    document.getElementById('saveStatus').textContent = '✔ اتحفظ أوتوماتيك';
+    setTimeout(()=>{ document.getElementById('saveStatus').textContent = ''; }, 2500);
+  }, 900);
+}
+
+body.querySelectorAll('.time-input').forEach(inp=>{
     inp.onchange = e=>{
       const idx = parseInt(e.target.dataset.idx);
       const field = e.target.dataset.field;
@@ -317,6 +333,7 @@ function renderTable(){
       if(field==='clockIn') rows[idx].manualArrivalOverride = true;
       dirty.add(idx);
       renderTable();
+      scheduleAutoSave();
     };
   });
   body.querySelectorAll('.absent-check').forEach(chk=>{
@@ -327,6 +344,7 @@ function renderTable(){
       delete rows[idx].autoFilled;
       dirty.add(idx);
       renderTable();
+      scheduleAutoSave();
     };
   });
   body.querySelectorAll('.bayat-check').forEach(chk=>{
@@ -335,6 +353,7 @@ function renderTable(){
       rows[idx].stayedOvernight = e.target.checked;
       dirty.add(idx);
       renderTable();
+      scheduleAutoSave();
     };
   });
   body.querySelectorAll('.del-row').forEach(btn=>{
@@ -344,6 +363,7 @@ function renderTable(){
       rows.splice(idx,1);
       dirty = new Set([...dirty].map(i=> i>idx ? i-1 : i).filter(i=>i!==idx));
       renderFilter(); renderTable();
+      scheduleAutoSave();
     };
   });
 }
@@ -369,10 +389,11 @@ document.getElementById('addRowBtn').onclick = ()=>{
   rows.push({ code, name, date: d, dateKey: dateKey(d), weekday: d.getDay(), clockIn:null, clockOut:null, absent:true, stayedOvernight:false });
   dirty.add(rows.length-1);
   renderFilter(); renderTable();
-  toast('تم إضافة اليوم');
+  scheduleAutoSave();
 };
 
 document.getElementById('saveBtn').onclick = async ()=>{
+  if(autoSaveTimer) clearTimeout(autoSaveTimer);
   await saveRaw(rows);
   await DB.dbDeleteKey('gm_att_processed'); // force recalculation since data changed
   dirty = new Set();

@@ -78,6 +78,16 @@ firebase.auth().onAuthStateChanged(function(user){
   }
 });
 
+function normalizeDigits(str){
+  const arabicIndic = '٠١٢٣٤٥٦٧٨٩';
+  const persian = '۰۱۲۳۴۵۶۷۸۹';
+  return str.replace(/[٠-٩۰-۹]/g, ch=>{
+    let idx = arabicIndic.indexOf(ch);
+    if(idx===-1) idx = persian.indexOf(ch);
+    return idx!==-1 ? String(idx) : ch;
+  });
+}
+
 function showError(msg){
   const box = document.getElementById('errBox');
   box.textContent = msg;
@@ -85,7 +95,7 @@ function showError(msg){
 }
 
 function tryLogin(){
-  const code = document.getElementById('codeInput').value.trim();
+  const code = normalizeDigits(document.getElementById('codeInput').value.trim());
   const pin = document.getElementById('pinInput').value;
   if(!code || !pin) return;
   const btn = document.getElementById('loginBtn');
@@ -95,7 +105,7 @@ function tryLogin(){
     location.href = 'my-data.html';
   }).catch(err=>{
     btn.disabled = false; btn.textContent = 'دخول';
-    if(err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found'){
+    if(err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email'){
       showError('كود الموظف أو الرقم السري غلط، أو حسابك لسه متفعّلش — كلم المدير');
     } else {
       showError('حصل خطأ: ' + err.message);

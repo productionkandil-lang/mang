@@ -413,7 +413,11 @@ function renderTable(){
       const name = e.target.dataset.name;
       const pin = prompt('اكتب رقم سري مبدئي للموظف "'+name+'" (هيطلب منه يغيّره أول ما يدخل):');
       if(!pin || pin.length < 4){ if(pin!==null) alert('الرقم لازم يكون 4 أرقام على الأقل'); return; }
-      const email = 'emp' + code + '@emp.gm-marine.local';
+      const normalizedCode = String(code).replace(/[٠-٩۰-۹]/g, ch=>{
+        const idx = '٠١٢٣٤٥٦٧٨٩'.indexOf(ch);
+        return idx!==-1 ? String(idx) : ('۰۱۲۳۴۵۶۷۸۹'.indexOf(ch)!==-1 ? String('۰۱۲۳۴۵۶۷۸۹'.indexOf(ch)) : ch);
+      });
+      const email = 'emp' + normalizedCode + '@emp.gm-marine.local';
       const secondaryApp = firebase.initializeApp(firebase.app().options, 'Secondary-' + Date.now());
       try{
         const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, pin);

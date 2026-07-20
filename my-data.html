@@ -187,7 +187,8 @@ function renderStats(data){
   const att = data.currentMonthAttendance || [];
   const present = att.filter(a=>!a.absent).length;
   const absent = att.filter(a=>a.absent).length;
-  const lastPayslip = (data.payslips||[])[data.payslips.length-1];
+  const payslips = data.payslips || [];
+  const lastPayslip = payslips[payslips.length-1];
   document.getElementById('statsBox').innerHTML = `
     <div class="stat"><div class="n">${present}</div><div class="l">أيام حضور (الشهر الحالي)</div></div>
     <div class="stat"><div class="n">${absent}</div><div class="l">أيام غياب (الشهر الحالي)</div></div>

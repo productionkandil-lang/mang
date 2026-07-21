@@ -230,6 +230,16 @@ async function saveLog(l){ await DB.dbSetJSON(LOG_KEY, l); }
 
 let vans = await loadVans();
 let log = await loadLog();
+
+// تنظيف أي أيام يتيمة متسجلة لعربية اتمسحت أو مبقتش موجودة —
+// دي كانت بتفضل موجودة وبتزوّد "إجمالي الأيام" غلط من غير ما تظهر
+// في جدول أي عربية حالية
+{
+  const validVanIds = new Set(vans.map(v=>v.id));
+  const before = log.length;
+  log = log.filter(e=>validVanIds.has(e.vanId));
+  if(log.length !== before) await saveLog(log);
+}
 let activeVanId = vans[0]?.id || null;
 let sortField = 'date';
 let sortDir = 'desc';

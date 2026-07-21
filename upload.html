@@ -74,6 +74,7 @@
   button:disabled{opacity:.4; cursor:not-allowed;}
 
   .table-wrap{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
+  .mono{font-family:'IBM Plex Mono',monospace;}
   table{width:100%; border-collapse:collapse; background:var(--surface);}
   thead th{background:var(--surface-2); text-align:right; padding:11px 12px; font-size:11.5px; color:var(--text-dim); font-weight:700; border-bottom:1px solid var(--border); white-space:nowrap;}
   tbody td{padding:9px 12px; border-bottom:1px solid var(--border); font-size:13px; white-space:nowrap; font-family:'IBM Plex Mono',monospace;}
@@ -151,6 +152,22 @@
     <div class="card">
       <h3>ملخص الملف</h3>
       <div class="summary-grid" id="fileSummary"></div>
+    </div>
+
+    <div class="card" id="conflictsCard" style="display:none;">
+      <h3>⚠️ فروق بين الملف الجديد والبيانات المحفوظة</h3>
+      <p style="color:var(--text-dim); font-size:12.5px; margin:-8px 0 14px;">
+        الأيام دي متسجلة بالفعل وفضلت زي ما هي (مش اتلمست)، لكن الملف الجديد فيه أرقام مختلفة ليها.
+        لو حد منها غلط في السجل المحفوظ فعلاً، تقدر تدوس "استخدم رقم الملف" وتاخد القيمة الجديدة.
+      </p>
+      <div class="table-wrap">
+        <table id="conflictsTable">
+          <thead>
+            <tr><th>الموظف</th><th>التاريخ</th><th>المحفوظ (حضور)</th><th>الملف الجديد (حضور)</th><th>المحفوظ (انصراف)</th><th>الملف الجديد (انصراف)</th><th></th></tr>
+          </thead>
+          <tbody id="conflictsBody"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="period-select">
@@ -381,6 +398,7 @@ async function parseRows(rows){
   const merge = mergeRows(existing, newRows);
   rawRows = merge.all;
   window._mergeStats = merge.stats;
+  window._mergeConflicts = merge.conflicts;
 
   await DB.dbSetJSON(RAW_KEY, rawRows);
   await DB.dbDeleteKey(PROCESSED_KEY); // data changed, force recalculation
@@ -399,13 +417,27 @@ async function loadExistingRaw(){
 function mergeRows(existing, incoming){
   const map = new Map();
   existing.forEach(r => map.set(r.code+'|'+r.dateKey, r));
-  let added = 0, updated = 0;
+  let added = 0, skipped = 0;
+  const conflicts = [];
   incoming.forEach(r => {
     const key = r.code+'|'+r.dateKey;
-    if(map.has(key)) updated++; else added++;
-    map.set(key, r); // new file's data wins for overlapping days
+    if(map.has(key)){
+      skipped++;
+      const old = map.get(key);
+      if(old.clockIn !== r.clockIn || old.clockOut !== r.clockOut){
+        conflicts.push({
+          code: r.code, name: old.name || r.name, dateKey: r.dateKey,
+          oldClockIn: old.clockIn, oldClockOut: old.clockOut,
+          newClockIn: r.clockIn, newClockOut: r.clockOut,
+          manualOverride: !!old.manualArrivalOverride
+        });
+      }
+      return; // اليوم ده متسجل ومراجع بالفعل — نسيبه زي ما هو ومنلمسوش
+    }
+    added++;
+    map.set(key, r);
   });
-  return { all: [...map.values()], stats: { added, updated, incomingTotal: incoming.length } };
+  return { all: [...map.values()], stats: { added, skipped, incomingTotal: incoming.length }, conflicts };
 }
 
 async function syncEmployees(){
@@ -426,6 +458,47 @@ async function syncEmployees(){
   window._syncedCount = added;
 }
 
+function minutesToTime(m){
+  if(m==null) return '—';
+  const h = Math.floor(m/60), mm = m%60;
+  return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+}
+
+function renderConflicts(){
+  const card = document.getElementById('conflictsCard');
+  const body = document.getElementById('conflictsBody');
+  const conflicts = window._mergeConflicts || [];
+  if(!conflicts.length){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  body.innerHTML = conflicts.map((c,i)=>`
+    <tr>
+      <td>${c.name}${c.manualOverride ? ' 🔒' : ''}</td>
+      <td class="mono">${c.dateKey}</td>
+      <td class="mono">${minutesToTime(c.oldClockIn)}</td>
+      <td class="mono" style="color:var(--brass-bright);">${minutesToTime(c.newClockIn)}</td>
+      <td class="mono">${minutesToTime(c.oldClockOut)}</td>
+      <td class="mono" style="color:var(--brass-bright);">${minutesToTime(c.newClockOut)}</td>
+      <td><button class="use-new-btn" data-i="${i}">استخدم رقم الملف</button></td>
+    </tr>
+  `).join('');
+  body.querySelectorAll('.use-new-btn').forEach(btn=>{
+    btn.onclick = async e=>{
+      const c = conflicts[parseInt(e.target.dataset.i)];
+      const row = rawRows.find(r=>r.code===c.code && r.dateKey===c.dateKey);
+      if(!row){ alert('مقدرتش ألاقي اليوم ده في السجل'); return; }
+      row.clockIn = c.newClockIn;
+      row.clockOut = c.newClockOut;
+      row.absent = c.newClockIn==null;
+      delete row.manualArrivalOverride;
+      await DB.dbSetJSON(RAW_KEY, rawRows);
+      await DB.dbDeleteKey(PROCESSED_KEY);
+      conflicts.splice(conflicts.indexOf(c),1);
+      renderConflicts();
+      toast('تم تحديث اليوم ده برقم الملف');
+    };
+  });
+}
+
 function renderFileSummary(){
   const uniqueCodes = new Set(rawRows.map(r=>r.code));
   const dates = [...new Set(rawRows.map(r=>r.dateKey))].sort();
@@ -443,8 +516,9 @@ function renderFileSummary(){
   alerts.innerHTML = '';
   if(window._mergeStats){
     const s = window._mergeStats;
-    alerts.innerHTML += `<div class="alert"><span>🔄</span><div><b>تم الدمج مع البيانات القديمة.</b> ${s.added} يوم جديد اتضاف، و${s.updated} يوم موجود اتحدّث ببيانات الملف الجديد. باقي الأيام القديمة اللي مش في الملف ده فضلت زي ما هي.</div></div>`;
+    alerts.innerHTML += `<div class="alert"><span>🔄</span><div><b>تم الدمج مع البيانات القديمة.</b> ${s.added} يوم جديد اتضاف. ${s.skipped} يوم كان متسجل بالفعل (يمكن كنت راجعته وعدّلت عليه) — اتسيب زي ما هو ومتلمسش خالص.</div></div>`;
   }
+  renderConflicts();
   if(window._syncedCount){
     alerts.innerHTML += `<div class="alert"><span>ℹ️</span><div><b>موظفين جدد.</b> اتضاف ${window._syncedCount} موظف جديد من الملف. روح صفحة <a href="employees.html" style="color:var(--brass-bright)">الموظفين</a> وحدد النظام والمرتب بتاعهم قبل ما تكمل الحساب.</div></div>`;
   }
@@ -757,6 +831,7 @@ async function tryLoadPersisted(){
     rawRows = saved.map(r=>({...r, date: new Date(r.date)}));
     window._syncedCount = 0;
     window._mergeStats = null;
+    window._mergeConflicts = null;
     renderFileSummary();
     document.getElementById('dropSection').classList.add('collapsed');
     document.getElementById('resultSection').classList.remove('hidden');

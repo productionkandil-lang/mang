@@ -30,6 +30,22 @@
   nav a.active{color:var(--brass-bright); border-color:var(--brass);}
   main{max-width:1100px; margin:0 auto; padding:28px 24px 80px;}
 
+  .month-bar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px;
+    background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 16px;
+  }
+  .month-bar label{font-size:12.5px; color:var(--text-dim);}
+  .month-bar select{
+    background:var(--bg-raised); border:1px solid var(--border); border-radius:8px; color:var(--text);
+    padding:8px 12px; font-family:'IBM Plex Mono',monospace; font-size:13px;
+  }
+  .month-bar select:focus{outline:none; border-color:var(--brass);}
+  .month-bar button{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text);
+    padding:8px 14px; font-size:12.5px; font-family:'Tajawal',sans-serif; cursor:pointer;
+  }
+  .month-bar button:hover{border-color:var(--brass);}
+  .month-note{font-size:11.5px; color:var(--text-dim);}
   .stats{display:flex; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
   .stat{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 18px; min-width:140px;}
   .stat .n{font-family:'IBM Plex Mono',monospace; font-size:20px; font-weight:600; color:var(--brass-bright);}
@@ -131,6 +147,13 @@
 </header>
 
 <main>
+  <div class="month-bar">
+    <label for="monthSelect">الشهر المعروض:</label>
+    <select id="monthSelect"></select>
+    <button id="thisMonthBtn" type="button">الشهر الحالي</button>
+    <span class="month-note" id="monthNote"></span>
+  </div>
+
   <div class="stats" id="stats"></div>
 
   <div class="card">
@@ -244,6 +267,20 @@ let activeVanId = vans[0]?.id || null;
 let sortField = 'date';
 let sortDir = 'desc';
 
+// ---------- فلتر الشهر: كل الأرقام والجدول بتتحسب على الشهر المختار بس ----------
+function monthKeyOf(ds){ return (ds||'').slice(0,7); }        // "2026-09-14" -> "2026-09"
+function currentMonthKey(){
+  const t = new Date();
+  return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0');
+}
+let selectedMonth = currentMonthKey();
+function monthLabel(mk){
+  const names = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const [y,m] = mk.split('-').map(Number);
+  return names[m-1] + ' ' + y;
+}
+function entriesOfMonth(mk){ return log.filter(e=>monthKeyOf(e.date)===mk); }
+
 function toast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
@@ -282,14 +319,30 @@ async function autoGenerate(){
 await autoGenerate();
 
 function renderStats(){
-  const total = log.reduce((s,e)=>s+e.baseAmount+e.extraAmount,0);
-  const totalExtra = log.reduce((s,e)=>s+e.extraAmount,0);
+  const monthEntries = entriesOfMonth(selectedMonth);
+  const total = monthEntries.reduce((s,e)=>s+e.baseAmount+e.extraAmount,0);
+  const totalExtra = monthEntries.reduce((s,e)=>s+e.extraAmount,0);
+  const lbl = monthLabel(selectedMonth);
   document.getElementById('stats').innerHTML = `
     <div class="stat"><div class="n">${vans.length}</div><div class="l">عدد العربيات</div></div>
-    <div class="stat"><div class="n">${log.length}</div><div class="l">يوم مسجل (كل العربيات)</div></div>
-    <div class="stat"><div class="n">${total.toLocaleString()}</div><div class="l">إجمالي المصروف</div></div>
-    <div class="stat"><div class="n">${totalExtra.toLocaleString()}</div><div class="l">إجمالي المبالغ الإضافية</div></div>
+    <div class="stat"><div class="n">${monthEntries.length}</div><div class="l">يوم مسجل في ${lbl} (كل العربيات)</div></div>
+    <div class="stat"><div class="n">${total.toLocaleString()}</div><div class="l">إجمالي مصروف ${lbl}</div></div>
+    <div class="stat"><div class="n">${totalExtra.toLocaleString()}</div><div class="l">المبالغ الإضافية في ${lbl}</div></div>
   `;
+}
+
+function renderMonthBar(){
+  const sel = document.getElementById('monthSelect');
+  const months = [...new Set(log.map(e=>monthKeyOf(e.date)).filter(Boolean))];
+  if(!months.includes(selectedMonth)) months.push(selectedMonth);
+  if(!months.includes(currentMonthKey())) months.push(currentMonthKey());
+  months.sort().reverse();
+  sel.innerHTML = months.map(mk=>`<option value="${mk}" ${mk===selectedMonth?'selected':''}>${monthLabel(mk)}</option>`).join('');
+
+  const older = log.length - entriesOfMonth(selectedMonth).length;
+  document.getElementById('monthNote').textContent = older > 0
+    ? `(فيه ${older} يوم متسجل في شهور تانية — مش داخلين في الأرقام دي)`
+    : '';
 }
 
 function renderVanList(){
@@ -349,9 +402,16 @@ function renderTabs(){
 function renderTable(){
   const body = document.getElementById('vanBody');
   const empty = document.getElementById('emptyState');
-  const vanEntries = log.filter(e=>e.vanId===activeVanId);
+  const vanEntries = log.filter(e=>e.vanId===activeVanId && monthKeyOf(e.date)===selectedMonth);
   if(!vans.length){
     document.getElementById('vanTable').style.display='none';
+    empty.textContent = 'مفيش عربيات مضافة لسه — ضيف عربية فوق الأول';
+    empty.style.display='block';
+    return;
+  }
+  if(!vanEntries.length){
+    document.getElementById('vanTable').style.display='none';
+    empty.textContent = 'مفيش أيام متسجلة للعربية دي في ' + monthLabel(selectedMonth);
     empty.style.display='block';
     return;
   }
@@ -406,18 +466,28 @@ function renderTable(){
         await saveVans(vans);
       }
       await saveLog(log);
-      renderStats(); renderTable();
+      renderAll();
       toast('تم الحذف');
     };
   });
 }
 
 function renderAll(){
+  renderMonthBar();
   renderStats();
   renderVanList();
   renderTabs();
   renderTable();
 }
+
+document.getElementById('monthSelect').onchange = e=>{
+  selectedMonth = e.target.value;
+  renderAll();
+};
+document.getElementById('thisMonthBtn').onclick = ()=>{
+  selectedMonth = currentMonthKey();
+  renderAll();
+};
 
 document.querySelectorAll('th.sortable').forEach(th=>{
   th.onclick = ()=>{
@@ -467,7 +537,8 @@ document.getElementById('addBtn').onclick = async ()=>{
   document.getElementById('dateInput').value = '';
   document.getElementById('extraInput').value = '';
   document.getElementById('noteInput').value = '';
-  renderStats(); renderTable();
+  selectedMonth = monthKeyOf(date); // اعرض شهر اليوم اللي اتسجل عشان يبان قدامك
+  renderAll();
   toast('تم الإضافة');
 };
 

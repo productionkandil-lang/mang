@@ -80,12 +80,6 @@
 </style>
 </head>
 <body>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="db.js"></script>
-<script src="auth.js"></script>
 <header>
   <div>
     <h1>GM Marine — تقفيل الشهر</h1>
@@ -120,7 +114,7 @@
         <p>حدد الأعمدة اللي عايز تظهر، وحدد موظف أو اتنين للطباعة</p>
       </div>
       <div class="actions">
-        <button id="printBtn" data-auth-safe="1">🖨 طباعة المحدد</button>
+        <button id="printBtn">🖨 طباعة المحدد</button>
         <button id="closeMonthBtn" class="success">✔ تقفيل الشهر وأرشفته</button>
       </div>
     </div>
@@ -139,10 +133,7 @@
 <div class="toast" id="toast">تم</div>
 
 <script>
-Auth.guardPage(Auth.pageKeyFromLocation()).then(async function(){
-
-const EMP_KEY = 'gm_att_employees_public';
-const EMP_MONEY_KEY = 'gm_att_employees_money';
+const EMP_KEY = 'gm_att_employees';
 const SYS_KEY = 'gm_att_systems';
 const PROCESSED_KEY = 'gm_att_processed';
 const RAW_KEY = 'gm_att_raw';
@@ -150,10 +141,10 @@ const ADV_KEY = 'gm_att_advances';
 const ARCHIVE_KEY = 'gm_att_archive';
 const COLS_KEY = 'gm_att_report_cols';
 
-async function load(key, def){ return await DB.dbGetJSON(key, def); }
-async function save(key, val){ await DB.dbSetJSON(key, val); }
+function load(key, def){ return JSON.parse(localStorage.getItem(key) || JSON.stringify(def)); }
+function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
-async function migrateEmployees(list){
+function migrateEmployees(list){
   let migrated = false;
   list.forEach(e=>{
     if(!e.employmentPeriods){
@@ -161,17 +152,11 @@ async function migrateEmployees(list){
       migrated = true;
     }
   });
-  if(migrated) await DB.dbSetJSON(EMP_KEY, list);
+  if(migrated) localStorage.setItem(EMP_KEY, JSON.stringify(list));
   return list;
 }
-const employees = await migrateEmployees(await load(EMP_KEY, []));
-const moneyMap = await load(EMP_MONEY_KEY, {});
-employees.forEach(e=>{
-  const m = moneyMap[e.id] || {};
-  e.baseSalary = m.baseSalary || 0;
-  e.dailyTransportAllowance = m.dailyTransportAllowance || 0;
-});
-async function migrateSystems(s){
+const employees = migrateEmployees(load(EMP_KEY, []));
+function migrateSystems(s){
   let migrated = false;
   s.forEach(sys=>{
     if(!sys.weeklyOffDays){ sys.weeklyOffDays = sys.weeklyOffDay!=null ? [sys.weeklyOffDay] : [5]; migrated = true; }
@@ -190,14 +175,14 @@ async function migrateSystems(s){
       migrated = true;
     }
   });
-  if(migrated) await DB.dbSetJSON(SYS_KEY, s);
+  if(migrated) localStorage.setItem(SYS_KEY, JSON.stringify(s));
   return s;
 }
-const systems = await migrateSystems(await load(SYS_KEY, []));
-const processed = await load(PROCESSED_KEY, null);
-const rawRows = (await load(RAW_KEY, [])).map(r=>({...r, date:new Date(r.date)}));
-const advances = await load(ADV_KEY, []);
-const vanLog = await load('gm_att_van_log', []);
+const systems = migrateSystems(load(SYS_KEY, []));
+const processed = load(PROCESSED_KEY, null);
+const rawRows = load(RAW_KEY, []).map(r=>({...r, date:new Date(r.date)}));
+const advances = load(ADV_KEY, []);
+const vanLog = load('gm_att_van_log', []);
 
 function toast(msg){
   const t = document.getElementById('toast');
@@ -216,29 +201,27 @@ const COLUMN_DEFS = [
   { key:'ot15Hours', label:'أوفرتايم ×1.5', default:true },
   { key:'fridayOtHours', label:'أوفرتايم الجمعة', default:false },
   { key:'lateMinutes', label:'دقائق التأخير', default:false },
-  { key:'baseSalaryDisplay', label:'المرتب الأساسي (شامل أوفرتايم ×1)', default:true },
+  { key:'baseSalary', label:'المرتب الأساسي', default:true },
   { key:'hourlyRate', label:'أجر الساعة', default:false },
-  { key:'ot1Amount', label:'قيمة الأوفرتايم ×1', default:false },
-  { key:'ot15FridayAmount', label:'قيمة الأوفرتايم ×1.5/الجمعة', default:true },
+  { key:'otAmount', label:'قيمة الأوفرتايم', default:true },
   { key:'lateAmount', label:'خصم التأخير', default:true },
   { key:'absentAmount', label:'خصم الغياب', default:true },
   { key:'transportAllowance', label:'بدل مواصلات', default:true },
   { key:'otherAllowances', label:'بدلات أخرى', default:false },
   { key:'advanceDue', label:'سلفة مستحقة', default:true },
   { key:'deductionDue', label:'خصم يدوي', default:true },
-  { key:'roundingAdjustment', label:'تقريب الصافي', default:true },
   { key:'netSalary', label:'الصافي', always:true },
 ];
 
-async function loadColumnPrefs(){
-  const saved = await load(COLS_KEY, null);
+function loadColumnPrefs(){
+  const saved = load(COLS_KEY, null);
   if(saved) return saved;
   const def = {};
   COLUMN_DEFS.forEach(c=> def[c.key] = c.always || c.default);
-  await save(COLS_KEY, def);
+  save(COLS_KEY, def);
   return def;
 }
-let colPrefs = await loadColumnPrefs();
+let colPrefs = loadColumnPrefs();
 
 function getSystem(id){ return systems.find(s=>s.id===id); }
 function getEmp(code){ return employees.find(e=>e.code===code); }
@@ -269,7 +252,10 @@ function periodBounds(){
   return { start: keys[0], end: keys[keys.length-1] };
 }
 const PERIOD = periodBounds();
-const vanEntriesThisPeriod = vanLog.filter(e => PERIOD.start && PERIOD.end && e.date>=PERIOD.start && e.date<=PERIOD.end);
+// نستخدم شهر آخر يوم حضور مرفوع كـ"الشهر اللي بيتقفل" — عشان لو بيانات الحضور
+// امتدت لغلط عبر شهرين (شهر قديم متقفلش)، مصاريف العربية تتحسب على شهر واحد بس
+const CLOSING_MONTH = PERIOD.end ? PERIOD.end.slice(0,7) : null;
+const vanEntriesThisPeriod = vanLog.filter(e => CLOSING_MONTH && (e.date||'').slice(0,7)===CLOSING_MONTH);
 const vanTotal = vanEntriesThisPeriod.reduce((s,e)=>s+(e.baseAmount||0)+(e.extraAmount||0),0);
 
 function countDaysBetween(startKey, endKey){
@@ -357,34 +343,15 @@ function computeAbsentAmount(res, emp, sys, baseSalary){
   return deductDays * dailyRate;
 }
 
-function formatHoursLabel(hours){
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  return h + ':' + String(m).padStart(2,'0');
-}
-
 function buildReportRows(){
   if(!processed || !processed.results) return [];
-  return processed.results
-    .filter(res=>{
-      const emp = getEmp(res.code);
-      return !emp || emp.active !== false;
-    })
-    .map(res=>{
+  return processed.results.map(res=>{
     const emp = getEmp(res.code) || {};
     const sys = getSystem(res.systemId);
     const baseSalary = emp.baseSalary || 0;
     const hourlyRate = sys && sys.monthlyRequiredHours ? baseSalary / sys.monthlyRequiredHours : 0;
 
-    const ot1Amount = (res.ot1Hours||0) * hourlyRate;
-    const ot15FridayAmount = ((res.ot15Hours||0) + (res.fridayOtHours||0)) * hourlyRate;
-    const otAmount = ot1Amount + ot15FridayAmount;
-    // "أساسي الراتب" المعروض = المرتب الأساسي + الأوفرتايم ساعة بساعة (×1) فقط
-    const baseSalaryDisplay = baseSalary + ot1Amount;
-    // ساعات العمل اليومية المعروضة = الساعات العادية + سقف الأوفرتايم ×1 (إعداد ثابت في النظام)
-    const dailyHours = sys ? (sys.overtime.baseHours||0) + (sys.overtime.rate1MaxHours||0) : 0;
-    const dailyHoursLabel = formatHoursLabel(dailyHours);
-
+    const otAmount = (res.ot1Hours + res.ot15Hours + res.fridayOtHours) * hourlyRate;
     const lateAmount = res.lateMinutes ? res.lateMinutes * (hourlyRate/60) : 0;
     const absentAmount = computeAbsentAmount(res, emp, sys||{deductions:{enabled:false}}, baseSalary);
 
@@ -397,18 +364,16 @@ function buildReportRows(){
     const advanceDue = empAdvances.filter(a=>a.type==='advance').reduce((s,a)=> s + Math.min(a.totalAmount/a.installments, a.remaining), 0);
     const deductionDue = empAdvances.filter(a=>a.type==='deduction').reduce((s,a)=> s + Math.min(a.totalAmount/a.installments, a.remaining), 0);
 
-    const rawNet = baseSalary + otAmount + transportAllowance + otherAllowances - lateAmount - absentAmount - advanceDue - deductionDue;
-    const netSalary = Math.round(rawNet / 5) * 5;
-    const roundingAdjustment = netSalary - rawNet; // + يعني اتزود للصافي، - يعني اتخصم
+    const netSalary = baseSalary + otAmount + transportAllowance + otherAllowances - lateAmount - absentAmount - advanceDue - deductionDue;
 
     return {
-      code: res.code, name: emp.arabicName || res.name, systemId: res.systemId,
+      code: res.code, name: res.name, systemId: res.systemId,
       systemName: sys ? sys.name : '—',
       daysPresent: res.daysPresent, daysAbsent: res.daysAbsent,
       regularHours: res.regularHours, ot1Hours: res.ot1Hours, ot15Hours: res.ot15Hours, fridayOtHours: res.fridayOtHours,
       lateMinutes: res.lateMinutes,
-      baseSalary, baseSalaryDisplay, dailyHoursLabel, hourlyRate, ot1Amount, ot15FridayAmount, otAmount, lateAmount, absentAmount,
-      transportAllowance, otherAllowances, advanceDue, deductionDue, roundingAdjustment, netSalary
+      baseSalary, hourlyRate, otAmount, lateAmount, absentAmount,
+      transportAllowance, otherAllowances, advanceDue, deductionDue, netSalary
     };
   });
 }
@@ -437,12 +402,6 @@ function renderColsPanel(){
 
 function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '<span style="color:#c15b4f;font-weight:700;" title="قيمة غير محسوبة - فيه مشكلة في البيانات">⚠ خطأ</span>'; return (Math.round(n*100)/100).toLocaleString(); }
 
-const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-function currentMonthLabel(){
-  const now = new Date();
-  return ARABIC_MONTHS[now.getMonth()] + ' ' + now.getFullYear();
-}
-
 function renderStats(){
   const totalNet = reportRows.reduce((s,r)=>s+r.netSalary,0);
   const totalOt = reportRows.reduce((s,r)=>s+r.otAmount,0);
@@ -452,7 +411,7 @@ function renderStats(){
     <div class="stat"><div class="n">${fmt(totalOt)}</div><div class="l">إجمالي الأوفرتايم</div></div>
     <div class="stat"><div class="n">${fmt(totalDed)}</div><div class="l">إجمالي الخصومات</div></div>
     <div class="stat"><div class="n">${fmt(totalNet)}</div><div class="l">إجمالي الصافي (الموظفين)</div></div>
-    <div class="stat"><div class="n">${fmt(vanTotal)}</div><div class="l">مصاريف عربية الوردية (${vanEntriesThisPeriod.length} يوم)</div></div>
+    <div class="stat"><div class="n">${fmt(vanTotal)}</div><div class="l">مصاريف عربية الوردية — ${CLOSING_MONTH||'—'} (${vanEntriesThisPeriod.length} يوم)</div></div>
     <div class="stat"><div class="n">${fmt(totalNet + vanTotal)}</div><div class="l">الإجمالي الكلي (رواتب + عربية)</div></div>
   `;
 }
@@ -494,7 +453,7 @@ function renderTable(){
       else if(typeof val === 'number'){ val = fmt(val); if(['lateAmount','absentAmount','advanceDue','deductionDue'].includes(c.key) && r[c.key]>0) cls='neg'; }
       return `<td class="${cls}">${val}</td>`;
     }).join('');
-    tr.innerHTML = `<td><input type="checkbox" class="sel-check" data-auth-safe="1" data-code="${r.code}" ${selectedCodes.has(r.code)?'checked':''}></td>${cells}`;
+    tr.innerHTML = `<td><input type="checkbox" class="sel-check" data-code="${r.code}" ${selectedCodes.has(r.code)?'checked':''}></td>${cells}`;
     body.appendChild(tr);
   });
 
@@ -510,38 +469,16 @@ document.getElementById('printBtn').onclick = ()=>{
   if(!selectedCodes.size){ alert('حدد موظف واحد أو اتنين على الأكثر للطباعة'); return; }
   if(selectedCodes.size > 2){ alert('تقدر تطبع موظفين بحد أقصى في نفس الصفحة'); return; }
   const rows = reportRows.filter(r=>selectedCodes.has(r.code));
-  printPayslips(rows, currentMonthLabel());
+  printPayslips(rows);
 };
 
-async function syncEmployeeViewsAtClose(label, advList){
-  const portalEmployees = employees.filter(e=>e.portalEnabled && e.code);
-  for(const emp of portalEmployees){
-    const row = reportRows.find(r=>r.code===emp.code);
-    if(!row) continue;
-    try{
-      const snap = await firebase.firestore().collection('employee_views').doc(emp.code).get();
-      const existing = snap.exists ? snap.data() : {};
-      const payslips = existing.payslips || [];
-      payslips.push({ label, closedAt: Date.now(), ...row });
-      const empAdvances = advList.filter(a=>a.employeeCode===emp.code);
-      await firebase.firestore().collection('employee_views').doc(emp.code).set({
-        name: emp.arabicName || emp.name,
-        payslips,
-        advances: empAdvances
-      }, { merge:true });
-    }catch(err){
-      console.error('تعذر مزامنة ملف الموظف', emp.code, err);
-    }
-  }
-}
-
-document.getElementById('closeMonthBtn').onclick = async ()=>{
+document.getElementById('closeMonthBtn').onclick = ()=>{
   if(!reportRows.length){ alert('مفيش بيانات لتقفيلها'); return; }
-  const label = prompt('اسم/شهر التقرير ده:', currentMonthLabel());
+  const label = prompt('اسم/شهر التقرير ده (مثلاً: يوليو 2026):', '');
   if(!label) return;
   if(!confirm(`هيتم أرشفة تقرير "${label}" ومسح بيانات الحضور الحالية عشان تبدأ الشهر الجديد. متأكد؟`)) return;
 
-  const archive = await load(ARCHIVE_KEY, []);
+  const archive = load(ARCHIVE_KEY, []);
   archive.push({
     id: 'arch_'+Date.now().toString(36),
     label, closedAt: Date.now(),
@@ -549,69 +486,46 @@ document.getElementById('closeMonthBtn').onclick = async ()=>{
     rows: reportRows,
     vanTotal, vanEntries: vanEntriesThisPeriod
   });
-  await save(ARCHIVE_KEY, archive);
+  save(ARCHIVE_KEY, archive);
 
   // deduct advances/deductions applied this month
-  const advList = await load(ADV_KEY, []);
+  const advList = load(ADV_KEY, []);
   advList.forEach(a=>{
     const applied = reportRows.find(r=>r.code===a.employeeCode);
     if(!applied || a.remaining<=0) return;
     const due = Math.min(a.totalAmount/a.installments, a.remaining);
     a.remaining = Math.max(0, a.remaining - due);
   });
-  await save(ADV_KEY, advList);
+  save(ADV_KEY, advList);
 
-  await syncEmployeeViewsAtClose(label, advList);
-
-  await DB.dbDeleteKey(RAW_KEY);
-  await DB.dbDeleteKey(PROCESSED_KEY);
+  localStorage.removeItem(RAW_KEY);
+  localStorage.removeItem(PROCESSED_KEY);
 
   toast('تم تقفيل الشهر وأرشفته بنجاح');
   setTimeout(()=> location.href = 'history.html', 1200);
 };
 
 // ---------- print ----------
-function printPayslips(rows, periodLabel){
+function printPayslips(rows){
   const win = window.open('', '_blank');
-  const cardHtml = rows.map(r => payslipCardHtml(r, periodLabel)).join('');
+  const cardHtml = rows.map(r => payslipCardHtml(r)).join('');
+  const cols = rows.length === 2 ? '1fr 1fr' : '1fr';
   win.document.write(`
     <html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير راتب</title>
     <style>
-      @page{ size: A4 landscape; margin: 8mm; }
-      body{ font-family: Tajawal, Arial, sans-serif; margin:0; padding:0; color:#1a1a1a; }
-      .wrap{ display:flex; justify-content:center; gap:6mm; }
-      .card{ border:2px solid #2f6fb0; border-radius:4px; overflow:hidden; width:148mm; min-height:195mm; box-sizing:border-box; }
-      .letterhead{
-        display:flex; justify-content:space-between; align-items:center;
-        padding:10px 16px; border-bottom:2px solid #2f6fb0;
-      }
-      .letterhead .company{ font-size:15px; font-weight:800; }
-      .letterhead .dept{ font-size:12px; color:#2f6fb0; font-weight:700; }
-      .title{
-        text-align:center; font-weight:800; font-size:13px; padding:8px;
-        border-bottom:2px solid #2f6fb0;
-      }
-      .meta{ width:100%; border-collapse:collapse; }
-      .meta td{ padding:7px 12px; font-size:12.5px; border-bottom:1px solid #2f6fb0; }
-      .meta td.mlabel{ font-weight:700; width:35%; border-inline-end:1px solid #2f6fb0; }
-      .meta tr.subtotal td{ font-weight:800; background:#eef3f8; }
-      .ledger{ width:100%; border-collapse:collapse; }
-      .ledger th, .ledger td{ padding:7px 8px; font-size:12px; text-align:center; border:1px solid #2f6fb0; }
-      .ledger th.credit-h{ background:#c8e6c9; font-weight:800; font-size:13px; }
-      .ledger th.debit-h{ background:#f4b8b0; font-weight:800; font-size:13px; }
-      .ledger th.sub{ background:#eef3f8; font-weight:700; font-size:11.5px; }
-      .ledger td.item-label{ text-align:center; }
-      .ledger td.item-val{ font-family:'Courier New',monospace; font-weight:700; }
-      .ledger tr.total td{ font-weight:800; }
-      .ledger tr.total td.credit-total{ background:#dcefdc; }
-      .ledger tr.total td.debit-total{ background:#fbdedb; }
-      .net{
-        display:flex; justify-content:space-between; align-items:center;
-        padding:12px 16px; font-size:15px; font-weight:800; background:#f4f6f8;
-      }
-      .net .amount{ font-family:'Courier New',monospace; text-decoration:underline; }
-      .sig{ margin:14px 16px 18px; display:flex; justify-content:space-between; font-size:11px; color:#555; }
+      body{ font-family: Tajawal, Arial, sans-serif; margin:0; padding:24px; color:#1a1a1a; }
+      .wrap{ display:grid; grid-template-columns:${cols}; gap:20px; }
+      .card{ border:1.5px solid #333; border-radius:10px; padding:18px; }
+      .card h2{ font-size:16px; margin:0 0 2px; }
+      .card .sub{ font-size:11px; color:#555; margin-bottom:14px; }
+      table{ width:100%; border-collapse:collapse; font-size:12px; }
+      td{ padding:5px 4px; border-bottom:1px solid #ddd; }
+      td.label{ color:#555; }
+      td.val{ text-align:left; font-family:'Courier New',monospace; font-weight:600; }
+      tr.net td{ font-weight:800; font-size:14px; border-top:2px solid #333; border-bottom:none; padding-top:8px; }
+      .sig{ margin-top:24px; display:flex; justify-content:space-between; font-size:11px; color:#555; }
       .sig div{ border-top:1px solid #999; padding-top:6px; width:40%; text-align:center; }
+      @media print{ body{ padding:10px; } }
     </style></head>
     <body>
       <div class="wrap">${cardHtml}</div>
@@ -621,65 +535,25 @@ function printPayslips(rows, periodLabel){
   win.document.close();
 }
 
-function payslipCardHtml(r, periodLabel){
-  const otHoursForDisplay = (r.ot15Hours||0) + (r.fridayOtHours||0);
-  const roundPositive = r.roundingAdjustment > 0 ? r.roundingAdjustment : 0;
-  const roundNegative = r.roundingAdjustment < 0 ? -r.roundingAdjustment : 0;
-  const credits = [
-    { label:'عدد ساعات الاضافي (×1.5/جمعة)', val: Math.round(otHoursForDisplay*10)/10 },
-    { label:'قيمة الساعات الاضافية', val: r.ot15FridayAmount },
-    { label:'بدل مواصلات', val: r.transportAllowance },
-    { label:'بدلات اخرى', val: r.otherAllowances },
-    { label:'تقريب الصافي', val: roundPositive || '—' }
-  ];
-  const debits = [
-    { label:'السلف', val: r.advanceDue },
-    { label:'خصم يدوي', val: r.deductionDue },
-    { label:'عدد ايام الغياب', val: r.daysAbsent },
-    { label:'قيمة الغياب', val: r.absentAmount },
-    { label:'خصم التأخير', val: r.lateAmount },
-    { label:'تقريب الصافي', val: roundNegative || '—' }
-  ];
-  const creditTotal = r.ot15FridayAmount + r.transportAllowance + r.otherAllowances + roundPositive;
-  const debitTotal = r.advanceDue + r.absentAmount + r.lateAmount + r.deductionDue + roundNegative;
-  const rowCount = Math.max(credits.length, debits.length);
-  let bodyRows = '';
-  for(let i=0;i<rowCount;i++){
-    const c = credits[i] || { label:'', val:'' };
-    const d = debits[i] || { label:'', val:'' };
-    const cDisplay = (c.val==='' || c.val==='—') ? (c.val||'') : fmt(c.val);
-    const dDisplay = (d.val==='' || d.val==='—') ? (d.val||'') : fmt(d.val);
-    bodyRows += `<tr>
-      <td class="item-label">${c.label}</td><td class="item-val">${cDisplay}</td>
-      <td class="item-label">${d.label}</td><td class="item-val">${dDisplay}</td>
-    </tr>`;
-  }
+function payslipCardHtml(r){
+  const row = (label, val, isNet) => `<tr class="${isNet?'net':''}"><td class="label">${label}</td><td class="val">${fmt(val)}</td></tr>`;
   return `
     <div class="card">
-      <div class="letterhead">
-        <div class="company">GM Marine</div>
-        <div class="dept">قسم الحسابات</div>
-      </div>
-      <div class="title">كشف رواتب تفصيلي ${periodLabel ? 'عن ' + periodLabel : ''}</div>
-      <table class="meta">
-        <tr><td class="mlabel">الموظف:</td><td>${r.name}</td></tr>
-        <tr><td class="mlabel">الراتب الأساسي:</td><td>${fmt(r.baseSalary)}</td></tr>
-        <tr><td class="mlabel">قيمة الأوفرتايم (استكمال ساعات العمل):</td><td>${fmt(r.ot1Amount)}</td></tr>
-        <tr class="subtotal"><td class="mlabel">راتب الشهر لعدد ساعات عمل يومية ${r.dailyHoursLabel}:</td><td>${fmt(r.baseSalaryDisplay)}</td></tr>
+      <h2>${r.name}</h2>
+      <div class="sub">كود: ${r.code} — النظام: ${r.systemName}</div>
+      <table>
+        ${row('المرتب الأساسي', r.baseSalary)}
+        ${row('أيام الحضور', r.daysPresent)}
+        ${row('أيام الغياب', r.daysAbsent)}
+        ${row('قيمة الأوفرتايم', r.otAmount)}
+        ${row('بدل المواصلات', r.transportAllowance)}
+        ${row('بدلات أخرى', r.otherAllowances)}
+        ${row('خصم التأخير', -r.lateAmount)}
+        ${row('خصم الغياب', -r.absentAmount)}
+        ${row('سلفة مستحقة', -r.advanceDue)}
+        ${row('خصم يدوي', -r.deductionDue)}
+        ${row('الصافي', r.netSalary, true)}
       </table>
-      <table class="ledger">
-        <tr><th class="credit-h" colspan="2">المستحقات</th><th class="debit-h" colspan="2">الاستقطاعات</th></tr>
-        <tr><th class="sub">بند</th><th class="sub">دائن</th><th class="sub">بند</th><th class="sub">مدين</th></tr>
-        ${bodyRows}
-        <tr class="total">
-          <td class="credit-total">إجمالي المستحقات</td><td class="credit-total">${fmt(creditTotal)}</td>
-          <td class="debit-total">إجمالي الاستقطاعات</td><td class="debit-total">${fmt(debitTotal)}</td>
-        </tr>
-      </table>
-      <div class="net">
-        <span>صافي الراتب المستحق</span>
-        <span class="amount">${fmt(r.netSalary)} ${r.netSalary>=0?'دائن':'مدين'}</span>
-      </div>
       <div class="sig">
         <div>توقيع الموظف</div>
         <div>توقيع الإدارة</div>
@@ -698,10 +572,6 @@ if(!processed || !processed.results || !processed.results.length){
   renderStats();
   renderTable();
 }
-
-Auth.finalizeAuthUI();
-
-});
 </script>
 </body>
 </html>
